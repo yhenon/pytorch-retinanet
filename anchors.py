@@ -50,7 +50,8 @@ class Anchors(nn.Module):
 
         all_anchors = np.expand_dims(all_anchors, axis=0)
 
-        return torch.autograd.variable.Variable(torch.cuda.FloatTensor(all_anchors), requires_grad=False)
+	return torch.from_numpy(all_anchors)
+        #return torch.autograd.Variable(torch.cuda.FloatTensor(all_anchors), requires_grad=False)
 
 def generate_anchors(base_size=16, ratios=None, scales=None):
     """

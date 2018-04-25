@@ -6,7 +6,7 @@ from torch.autograd import Variable
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
-import matplotlib.pyplot as plt
+#import matplotlib.pyplot as plt
 import time
 import os
 import copy
@@ -14,6 +14,8 @@ import model
 from anchors import Anchors
 import losses
 import pdb
+
+assert torch.__version__.split('.')[1] == '4'
 
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
@@ -28,20 +30,21 @@ if use_gpu:
     model = model.cuda()
 
 S = model(X)
-'''
+
 optimizer = optim.SGD(model.parameters(), lr=0.001, momentum=0.9)
 optimizer.zero_grad()
+
 # regression_loss = losses.regressionLoss()
-loss = losses.loss
+total_loss = losses.loss
 
 for i in range(100):
 	S = model(X)
 
-	classification, regression, anchors = loss(S[0], S[1], S[2])
+	loss = total_loss(S[0], S[1], S[2])
 	loss.backward()
 	optimizer.step()
 	print(loss)
-'''
+
 pdb.set_trace()
 
 # Observe that all parameters are being optimized
