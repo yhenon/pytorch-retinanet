@@ -41,7 +41,7 @@ class Anchors(nn.Module):
         image_shapes = [(image_shape + 2 ** x - 1) // (2 ** x) for x in self.pyramid_levels]
 
         # compute anchors over all pyramid levels
-        all_anchors = np.zeros((0, 4))
+        all_anchors = np.zeros((0, 4)).astype(np.float32)
 
         for idx, p in enumerate(self.pyramid_levels):
             anchors         = generate_anchors(base_size=self.sizes[idx], ratios=self.ratios, scales=self.scales)
@@ -50,7 +50,7 @@ class Anchors(nn.Module):
 
         all_anchors = np.expand_dims(all_anchors, axis=0)
 
-	return torch.from_numpy(all_anchors)
+	return torch.from_numpy(all_anchors.astype(np.float32)).cuda()
         #return torch.autograd.Variable(torch.cuda.FloatTensor(all_anchors), requires_grad=False)
 
 def generate_anchors(base_size=16, ratios=None, scales=None):

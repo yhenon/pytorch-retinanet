@@ -2,8 +2,17 @@ import torch.nn as nn
 import torch
 import math
 import torch.utils.model_zoo as model_zoo
-from utils import BasicBlock, Bottleneck
+from utils import BasicBlock, Bottleneck, BBoxTransform
 from anchors import Anchors
+
+
+model_urls = {
+    'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
+    'resnet34': 'https://download.pytorch.org/models/resnet34-333f7ec4.pth',
+    'resnet50': 'https://download.pytorch.org/models/resnet50-19c8e357.pth',
+    'resnet101': 'https://download.pytorch.org/models/resnet101-5d3b4d8f.pth',
+    'resnet152': 'https://download.pytorch.org/models/resnet152-b121ed2d.pth',
+}
 
 class PyramidFeatures(nn.Module):
     def __init__(self, C3_size, C4_size, C5_size, feature_size=128):
@@ -154,6 +163,8 @@ class ResNet(nn.Module):
         self.classificationModel = ClassificationModel(128)
 
         self.anchors = Anchors()
+
+        self.regressBoxes = BBoxTransform()
         
         
         for m in self.modules():
@@ -172,6 +183,8 @@ class ResNet(nn.Module):
         self.regressionModel.output.weight.data.fill_(0)
         self.regressionModel.output.bias.data.fill_(0)
 
+        self.freeze_bn()
+
     def _make_layer(self, block, planes, blocks, stride=1):
         downsample = None
         if stride != 1 or self.inplanes != planes * block.expansion:
@@ -189,11 +202,14 @@ class ResNet(nn.Module):
 
         return nn.Sequential(*layers)
 
+    def freeze_bn(self):
+        '''Freeze BatchNorm layers.'''
+        for layer in self.modules():
+            if isinstance(layer, nn.BatchNorm2d):
+                layer.eval()
+
     def forward(self, img_batch):
-        if self.training == True:
-            print('Training')
-        if self.training == False:
-            print('Evaluating')
+
         x = self.conv1(img_batch)
         x = self.bn1(x)
         x = self.relu(x)
@@ -212,7 +228,9 @@ class ResNet(nn.Module):
 
         anchors = self.anchors(img_batch)
 
-        return [classification, regression, anchors]
+        transformed_anchors = self.regressBoxes(anchors, regression)
+
+        return [classification, regression, anchors, transformed_anchors]
 
 
 def resnet18(pretrained=False, **kwargs):
@@ -222,7 +240,7 @@ def resnet18(pretrained=False, **kwargs):
     """
     model = ResNet(BasicBlock, [2, 2, 2, 2], **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet18']))
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet18'], model_dir='.'), strict=False)
     return model
 
 
