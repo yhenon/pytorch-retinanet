@@ -27,7 +27,10 @@ def loss(classifications, regression, anchors, annotations):
     gamma = 2.0
     batch_size = classifications.shape[0]
 
-    losses = []
+    classification_losses = []
+    regression_losses = []
+
+    anchor = anchors[0, :, :]
 
     for j in range(batch_size):
 
@@ -68,9 +71,51 @@ def loss(classifications, regression, anchors, annotations):
 
         cls_loss = torch.where(torch.ne(targets, -1.0), cls_loss, torch.zeros(cls_loss.shape).cuda())
 
-        losses.append(cls_loss.sum()/torch.clamp(num_positive_anchors.float(), min=1.0))
+        classification_losses.append(cls_loss.sum()/torch.clamp(num_positive_anchors.float(), min=1.0))
 
         # compute the loss for regression
-        # TODO
+        anchor_widths  = anchor[:, 2] - anchor[:, 0]
+        anchor_heights = anchor[:, 3] - anchor[:, 1]
+        anchor_ctr_x   = anchor[:, 0] + 0.5 * anchor_widths
+        anchor_ctr_y   = anchor[:, 1] + 0.5 * anchor_heights
 
-    return torch.stack(losses).mean()
+        gt_widths  = assigned_annotations[:, 2] - assigned_annotations[:, 0]
+        gt_heights = assigned_annotations[:, 3] - assigned_annotations[:, 1]
+        gt_ctr_x   = assigned_annotations[:, 0] + 0.5 * gt_widths
+        gt_ctr_y   = assigned_annotations[:, 1] + 0.5 * gt_heights
+
+        # clip widths to 1
+        gt_widths  = torch.clamp(gt_widths, min=1)
+        gt_heights = torch.clamp(gt_heights, min=1)
+
+        targets_dx = (gt_ctr_x - anchor_ctr_x) / anchor_widths
+        targets_dy = (gt_ctr_y - anchor_ctr_y) / anchor_heights
+        targets_dw = torch.log(gt_widths / anchor_widths)
+        targets_dh = torch.log(gt_heights / anchor_heights)
+
+        targets = torch.stack((targets_dx, targets_dy, targets_dw, targets_dh))
+        targets = targets.t()
+
+        targets = targets/torch.Tensor([[0.2, 0.2, 0.3, 0.3]]).cuda()
+
+        negative_indices = 1 - positive_indices
+
+        #import pdb
+        #pdb.set_trace()
+
+        regression_diff = torch.abs(targets - regression[j, :, :])
+
+        regression_diff[negative_indices, :] = 0
+
+
+
+        regression_loss = torch.where(
+            torch.le(regression_diff, 1.0 / 9.0),
+            0.5 * 9.0 * torch.pow(regression_diff, 2),
+            regression_diff - 0.5 / 9.0
+        )
+
+        regression_losses.append(regression_loss[positive_indices, :].mean())
+
+
+    return torch.stack(classification_losses).mean(), torch.stack(regression_losses).mean()

@@ -55,55 +55,53 @@ if use_gpu:
 
 model.training = True
 
-optimizer = optim.Adam(model.parameters(), lr=1e-5)
+optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
 # regression_loss = losses.regressionLoss()
 total_loss = losses.loss
 
-for i in range(1):
+running_loss = 0.0
+
+for i in range(100):
 
 	for idx, data in enumerate(dataloader):
-	
-		for jj in range(400):
-			optimizer.zero_grad()
+		
+		optimizer.zero_grad()
 
 
-			classification, regression, anchors, transformed_anchors = model(data['img'].cuda().float())
-			if data['annot'][0, 0, 4] == -1:
-				continue
+		classification, regression, anchors, transformed_anchors = model(data['img'].cuda().float())
+		if data['annot'][0, 0, 4] == -1:
+			continue
 
-			loss = total_loss(classification, regression, anchors, data['annot'].cuda().float())
+		classification_loss, regression_loss = total_loss(classification, regression, anchors, data['annot'].cuda().float())
 
-			loss.backward()
+		loss = classification_loss + regression_loss
 
-			optimizer.step()
+		#pdb.set_trace()
 
-			print(idx, loss)
+		loss.backward()
 
-		break
+		torch.nn.utils.clip_grad_value_(model.parameters(), 0.1)
+
+		running_loss = running_loss * 0.99 + 0.01 * loss
+		optimizer.step()
+
+		print(idx, classification_loss, regression_loss, running_loss)
+
+
+#pdb.set_trace()
 
 for i in range(100):
 
 	for idx, data in enumerate(dataloader):
 	
-		optimizer.zero_grad()
-
 		classification, regression, anchors, transformed_anchors = model(data['img'].cuda().float())
-	
-		print(data['annot'])
-		loss = total_loss(classification, regression, anchors, data['annot'].cuda().float())
-
-		loss.backward()
-
-		optimizer.step()
-
-		print(loss)
-
-		idxs = np.where(classification>0.75)
+		
+		idxs = np.where(classification>0.5)
 		img = np.transpose(np.array(data['img'])[0, :, :, :], (1,2,0)).astype(np.uint8)
-		print(idxs)
+		print(idxs[0].shape[0])
 		for j in range(idxs[0].shape[0]):
-			bbox = anchors[0, idxs[1][j], :]
+			bbox = transformed_anchors[0, idxs[1][j], :]
 			x1 = int(bbox[0])
 			y1 = int(bbox[1])
 			x2 = int(bbox[2])

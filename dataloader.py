@@ -47,12 +47,11 @@ class CocoDataset(Dataset):
             self.labels[value] = key
 
     def __len__(self):
-        return 1
-        #return len(self.image_ids)
+        return len(self.image_ids)
 
 
     def __getitem__(self, idx):
-        idx += 4
+
         img = self.load_image(idx)
         annot = self.load_annotations(idx)
         sample = {'img': img, 'annot': annot}
