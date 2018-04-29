@@ -49,7 +49,6 @@ class CocoDataset(Dataset):
     def __len__(self):
         return len(self.image_ids)
 
-
     def __getitem__(self, idx):
 
         img = self.load_image(idx)
@@ -95,6 +94,10 @@ class CocoDataset(Dataset):
 
     def coco_label_to_label(self, coco_label):
         return self.coco_labels_inverse[coco_label]
+
+
+    def label_to_coco_label(self, label):
+        return self.coco_labels[label]
 
 def collater(data):
 

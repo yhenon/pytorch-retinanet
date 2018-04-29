@@ -96,26 +96,24 @@ def loss(classifications, regression, anchors, annotations):
         targets = torch.stack((targets_dx, targets_dy, targets_dw, targets_dh))
         targets = targets.t()
 
-        targets = targets/torch.Tensor([[0.2, 0.2, 0.3, 0.3]]).cuda()
 
         negative_indices = 1 - positive_indices
 
-        #import pdb
-        #pdb.set_trace()
 
         regression_diff = torch.abs(targets - regression[j, :, :])
 
         regression_diff[negative_indices, :] = 0
 
-
+        # regression_diff = regression_diff/torch.Tensor([[0.1, 0.1, 0.2, 0.2]]).cuda()
 
         regression_loss = torch.where(
             torch.le(regression_diff, 1.0 / 9.0),
             0.5 * 9.0 * torch.pow(regression_diff, 2),
             regression_diff - 0.5 / 9.0
         )
-
-        regression_losses.append(regression_loss[positive_indices, :].mean())
-
+        if positive_indices.sum() > 0:
+            regression_losses.append(regression_loss[positive_indices, :].mean())
+        else:
+            regression_losses.append(torch.Tensor([0]).float().cuda())
 
     return torch.stack(classification_losses).mean(), torch.stack(regression_losses).mean()

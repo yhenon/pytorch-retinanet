@@ -5,6 +5,15 @@ import torch.utils.model_zoo as model_zoo
 from utils import BasicBlock, Bottleneck, BBoxTransform
 from anchors import Anchors
 
+from lib.nms.pth_nms import pth_nms
+
+import pdb
+
+def nms(dets, thresh):
+    "Dispatch to either CPU or GPU NMS implementations.\
+    Accept dets as tensor"""
+    return pth_nms(dets, thresh)
+
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -228,9 +237,18 @@ class ResNet(nn.Module):
 
         anchors = self.anchors(img_batch)
 
-        transformed_anchors = self.regressBoxes(anchors, regression)
+        if self.training:
+            return [classification, regression, anchors]
+        else:
+            transformed_anchors = self.regressBoxes(anchors, regression)
+            scores = torch.max(classification, dim=2, keepdim=True)[0]
 
-        return [classification, regression, anchors, transformed_anchors]
+            anchors_nms_idx = nms(torch.cat([transformed_anchors, scores], dim=2)[0, :, :], 0.5)
+
+            nms_scores, nms_class = classification[0, anchors_nms_idx, :].max(dim=1)
+            #import pdb
+            #pdb.set_trace()
+            return [nms_scores, nms_class, transformed_anchors[0, anchors_nms_idx, :]]
 
 
 def resnet18(pretrained=False, **kwargs):

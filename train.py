@@ -20,33 +20,17 @@ from torch.utils.data import Dataset, DataLoader
 import cv2 
 assert torch.__version__.split('.')[1] == '4'
 import requests
+import coco_eval
+
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
 model = model.resnet18(pretrained=True)
 
-dataset = CocoDataset('../data/', transform=transforms.Compose([Resizer(), ToTensor()]))
-dataloader = DataLoader(dataset, batch_size=1, shuffle=True, num_workers=4, collate_fn=collater)
+dataset_train = CocoDataset('../coco/', set_name='train2017', transform=transforms.Compose([Resizer(), ToTensor()]))
+dataset_val = CocoDataset('../coco/', set_name='val2017', transform=transforms.Compose([Resizer(), ToTensor()]))
 
-'''
-img = np.zeros((2, 3, 256, 256)).astype(np.float32)
-
-img[0, 0, 30:130, 30:130] = 1
-img[0, 1, 130:190, 130:150] = 1
-
-img[1, 0, 30:230, 30:230] = 1
-
-annotations = np.zeros((2, 3, 5)).astype(np.float32)
-
-annotations[0, 0, :] = [0, 30, 30, 130, 130]
-annotations[0, 1, :] = [11, 130, 130, 190, 150]
-
-annotations[1, 0, :] = [1, 30, 30, 230, 230]
-
-X = torch.from_numpy(img).cuda()
-annotations = torch.from_numpy(annotations).cuda()
-print(type(X))
-'''
-
+dataloader_train = DataLoader(dataset_train, batch_size=1, shuffle=True, num_workers=4, collate_fn=collater)
+dataloader_val   = DataLoader(dataset_val, batch_size=1, shuffle=True, num_workers=4, collate_fn=collater)
 
 use_gpu = True
 
@@ -57,19 +41,23 @@ model.training = True
 
 optimizer = optim.Adam(model.parameters(), lr=1e-4)
 
-# regression_loss = losses.regressionLoss()
 total_loss = losses.loss
 
 running_loss = 0.0
 
-for i in range(100):
+model.train()
+model.freeze_bn()
 
-	for idx, data in enumerate(dataloader):
+for i in range(10):
+
+	model.train()
+
+	for idx, data in enumerate(dataloader_train):
 		
 		optimizer.zero_grad()
 
 
-		classification, regression, anchors, transformed_anchors = model(data['img'].cuda().float())
+		classification, regression, anchors = model(data['img'].cuda().float())
 		if data['annot'][0, 0, 4] == -1:
 			continue
 
@@ -77,35 +65,49 @@ for i in range(100):
 
 		loss = classification_loss + regression_loss
 
-		#pdb.set_trace()
-
 		loss.backward()
 
-		torch.nn.utils.clip_grad_value_(model.parameters(), 0.1)
+		torch.nn.utils.clip_grad_value_(model.parameters(), 0.001)
 
 		running_loss = running_loss * 0.99 + 0.01 * loss
+
 		optimizer.step()
 
-		print(idx, classification_loss, regression_loss, running_loss)
+		print(i, idx, classification_loss, regression_loss, running_loss)
 
+		if idx > 10000:
+			break
 
-#pdb.set_trace()
+	print('Evaluating dataset')
+	coco_eval.evaluate_coco(dataset_val, model)
+
+#torch.save(model, 'model.pt')
+#model.save_state_dict('mytraining.pt')
+
+#model = torch.load('model.pt')
+#model.load_state_dict('mytraining.pt')
+
+model.eval()
 
 for i in range(100):
 
 	for idx, data in enumerate(dataloader):
 	
-		classification, regression, anchors, transformed_anchors = model(data['img'].cuda().float())
-		
-		idxs = np.where(classification>0.5)
+		scores, classification, transformed_anchors = model(data['img'].cuda().float())
+
+		idxs = np.where(scores>0.8)
 		img = np.transpose(np.array(data['img'])[0, :, :, :], (1,2,0)).astype(np.uint8)
+		
 		print(idxs[0].shape[0])
+
 		for j in range(idxs[0].shape[0]):
-			bbox = transformed_anchors[0, idxs[1][j], :]
+			bbox = transformed_anchors[idxs[0][j], :]
 			x1 = int(bbox[0])
 			y1 = int(bbox[1])
 			x2 = int(bbox[2])
 			y2 = int(bbox[3])
+
+			print(classification[idxs[0][j]])
 
 			cv2.rectangle(img, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
 		cv2.imshow('img', img)
