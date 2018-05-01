@@ -107,13 +107,17 @@ class RegressionModel(nn.Module):
 
         out = self.output(out)
 
-        return out.view(x.shape[0], -1, 4)
+        # out is B x C x W x H, with C = 4*num_anchors
+        out = out.permute(0, 2, 3, 1)
+
+        return out.contiguous().view(out.shape[0], -1, 4)
 
 class ClassificationModel(nn.Module):
     def __init__(self, num_features_in, num_anchors=9, num_classes=80, prior=0.01, feature_size=128):
         super(ClassificationModel, self).__init__()
 
         self.num_classes = num_classes
+        self.num_anchors = num_anchors
         
         self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
         self.act1 = nn.ReLU()
@@ -147,7 +151,14 @@ class ClassificationModel(nn.Module):
         out = self.output(out)
         out = self.output_act(out)
 
-        return out.view(x.shape[0], -1, self.num_classes)
+        # out is B x C x W x H, with C = n_classes + n_anchors
+        out1 = out.permute(0, 2, 3, 1)
+
+        batch_size, width, height, channels = out1.shape
+
+        out2 = out1.view(batch_size, width, height, self.num_anchors, self.num_classes)
+
+        return out2.contiguous().view(x.shape[0], -1, self.num_classes)
 
 class ResNet(nn.Module):
 
@@ -163,10 +174,9 @@ class ResNet(nn.Module):
         self.layer2 = self._make_layer(block, 128, layers[1], stride=2)
         self.layer3 = self._make_layer(block, 256, layers[2], stride=2)
         self.layer4 = self._make_layer(block, 512, layers[3], stride=2)
-        self.avgpool = nn.AvgPool2d(7, stride=1)
-        self.fc = nn.Linear(512 * block.expansion, num_classes)
-
-        self.fpn = PyramidFeatures(128, 256, 512)
+        #import pdb
+        #pdb.set_trace()
+        self.fpn = PyramidFeatures(512, 1024, 2048)
 
         self.regressionModel = RegressionModel(128)
         self.classificationModel = ClassificationModel(128)
@@ -246,9 +256,11 @@ class ResNet(nn.Module):
             anchors_nms_idx = nms(torch.cat([transformed_anchors, scores], dim=2)[0, :, :], 0.5)
 
             nms_scores, nms_class = classification[0, anchors_nms_idx, :].max(dim=1)
-            #import pdb
-            #pdb.set_trace()
             return [nms_scores, nms_class, transformed_anchors[0, anchors_nms_idx, :]]
+
+            #nms_scores, nms_class = classification[0, :, :].max(dim=1)
+            #return [nms_scores, nms_class, transformed_anchors[0, :, :]]
+
 
 
 def resnet18(pretrained=False, **kwargs):
@@ -269,7 +281,7 @@ def resnet34(pretrained=False, **kwargs):
     """
     model = ResNet(BasicBlock, [3, 4, 6, 3], **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet34']))
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet34'], model_dir='.'), strict=False)
     return model
 
 
@@ -280,5 +292,5 @@ def resnet50(pretrained=False, **kwargs):
     """
     model = ResNet(Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
-        model.load_state_dict(model_zoo.load_url(model_urls['resnet50']))
+        model.load_state_dict(model_zoo.load_url(model_urls['resnet50'], model_dir='.'), strict=False)
     return model
