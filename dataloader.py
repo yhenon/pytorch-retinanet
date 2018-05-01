@@ -3,10 +3,14 @@ import os
 import torch
 import pandas as pd
 import numpy as np
+import cv2
+import random
+
 from torch.utils.data import Dataset, DataLoader
 from torchvision import transforms, utils
+from torch.utils.data.sampler import Sampler
+
 from pycocotools.coco import COCO
-import cv2
 
 class CocoDataset(Dataset):
     """Coco dataset."""
@@ -26,7 +30,6 @@ class CocoDataset(Dataset):
         self.image_ids = self.coco.getImgIds()
 
         self.load_classes()
-
 
     def load_classes(self):
         # load class names (name -> label)
@@ -99,48 +102,124 @@ class CocoDataset(Dataset):
     def label_to_coco_label(self, label):
         return self.coco_labels[label]
 
+    def image_aspect_ratio(self, image_index):
+        image = self.coco.loadImgs(self.image_ids[image_index])[0]
+        return float(image['width']) / float(image['height'])
+
+
 def collater(data):
 
     imgs = [s['img'] for s in data]
     annots = [s['annot'] for s in data]
+    scales = [s['scale'] for s in data]
+        
+    widths = [int(s.shape[0]) for s in imgs]
+    heights = [int(s.shape[1]) for s in imgs]
+    batch_size = len(imgs)
 
-    imgs = torch.unsqueeze(imgs[0], dim=0)
+    max_width = np.array(widths).max()
+    max_height = np.array(heights).max()
 
-    if annots[0].shape[0] > 0:
-        annots = torch.unsqueeze(annots[0], dim=0)
-    else:
-        annots = torch.zeros(1, 1, 5)
-        annots[0, 0, 4] = -1
+    padded_imgs = torch.zeros(batch_size, max_width, max_height, 3)
 
-    return {'img': imgs, 'annot': annots}
+    for i in range(batch_size):
+        img = imgs[i]
+        padded_imgs[i, :int(img.shape[0]), :int(img.shape[1]), :] = img
 
-class ToTensor(object):
-    """Convert ndarrays in sample to Tensors."""
+    padded_imgs = padded_imgs.permute(0, 3, 1, 2)
 
-    def __call__(self, sample):
-        image, annots = sample['img'], sample['annot']
-
-        # swap color axis because
-        # numpy image: H x W x C
-        # torch image: C X H X W
-
-        image = image.transpose((2, 0, 1))
-
-        return {'img': torch.from_numpy(image),
-                'annot': torch.from_numpy(annots)}
+    return {'img': padded_imgs, 'annot': annots, 'scale': scales}
 
 class Resizer(object):
     """Convert ndarrays in sample to Tensors."""
 
-    def __call__(self, sample):
+    def __call__(self, sample, min_side=608, max_side=800):
         image, annots = sample['img'], sample['annot']
 
-        width, height, cns = image.shape
+        rows, cols, cns = image.shape
 
-        pad_w = 32 - width%32
-        pad_h = 32 - height%32
+        smallest_side = min(rows, cols)
 
-        new_image = np.zeros((width + pad_w, height + pad_h, cns))
-        new_image[:width, :height, :] = image
+        # rescale the image so the smallest side is min_side
+        scale = min_side / smallest_side
 
-        return {'img': new_image, 'annot': annots}
+        # check if the largest side is now greater than max_side, which can happen
+        # when images have a large aspect ratio
+        largest_side = max(rows, cols)
+
+        if largest_side * scale > max_side:
+            scale = max_side / largest_side
+
+        # resize the image with the computed scale
+        image = cv2.resize(image, None, fx=scale, fy=scale)
+
+        rows, cols, cns = image.shape
+
+        pad_w = 32 - rows%32
+        pad_h = 32 - cols%32
+
+        new_image = np.zeros((rows + pad_w, cols + pad_h, cns))
+        new_image[:rows, :cols, :] = image
+
+        annots[:, :4] *= scale
+
+        return {'img': torch.from_numpy(new_image), 'annot': torch.from_numpy(annots), 'scale': scale}
+
+class Normalizer(object):
+    def __init__(self):
+        self.normalize = transforms.Normalize(mean=[0.485, 0.456, 0.406],
+                                 std=[0.229, 0.224, 0.225])
+    def __call__(self, sample):
+        image, annots, scale = sample['img'], sample['annot'], sample['scale']
+
+        return {'img':self.normalize(image), 'annot': annots, 'scale': scale}
+
+class UnNormalizer(object):
+    def __init__(self, mean=None, std=None):
+        if mean == None:
+            self.mean = [0.485, 0.456, 0.406]
+        else:
+            self.mean = mean
+        if std == None:
+            self.std = [0.229, 0.224, 0.225]
+        else:
+            self.std = std
+
+    def __call__(self, tensor):
+        """
+        Args:
+            tensor (Tensor): Tensor image of size (C, H, W) to be normalized.
+        Returns:
+            Tensor: Normalized image.
+        """
+        for t, m, s in zip(tensor, self.mean, self.std):
+            t.mul_(s).add_(m)
+        return tensor
+
+
+class AspectRatioBasedSampler(Sampler):
+
+    def __init__(self, data_source, batch_size, drop_last):
+        self.data_source = data_source
+        self.batch_size = batch_size
+        self.drop_last = drop_last
+        self.groups = self.group_images()
+
+    def __iter__(self):
+        random.shuffle(self.groups)
+        for group in self.groups:
+            yield group
+
+    def __len__(self):
+        if self.drop_last:
+            return len(self.sampler) // self.batch_size
+        else:
+            return (len(self.sampler) + self.batch_size - 1) // self.batch_size
+
+    def group_images(self):
+        # determine the order of the images
+        order = list(range(len(self.data_source)))
+        order.sort(key=lambda x: self.data_source.image_aspect_ratio(x))
+
+        # divide into groups, one group = one batch
+        return [[order[x % len(order)] for x in range(i, i + self.batch_size)] for i in range(0, len(order), self.batch_size)]

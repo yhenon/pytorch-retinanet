@@ -31,13 +31,18 @@ def loss(classifications, regression, anchors, annotations):
     regression_losses = []
 
     anchor = anchors[0, :, :]
-
+    
     for j in range(batch_size):
 
         classification = classifications[j, :, :]
-        annotation = annotations[j, :, :]
+        annotation = annotations[j].float().cuda()
 
-        classification = torch.clamp(classification, 1e-6, 1.0 - 1e-6)
+        if annotation.shape[0] == 0:
+            regression_losses.append(torch.tensor(0).float().cuda())
+            classification_losses.append(torch.tensor(0).float().cuda())
+            continue
+
+        classification = torch.clamp(classification, 1e-4, 1.0 - 1e-4)
 
         IoU = calc_iou(anchors[0, :, :], annotation[:, :4]) # num_anchors x num_annotations
 
@@ -58,12 +63,11 @@ def loss(classifications, regression, anchors, annotations):
         targets[positive_indices, :] = 0
         targets[positive_indices, assigned_annotations[positive_indices, 4].long()] = 1
 
-        alpha_factor = torch.ones(targets.shape) * alpha
-        alpha_factor = alpha_factor.cuda()
+        alpha_factor = torch.ones(targets.shape).cuda() * alpha
 
         alpha_factor = torch.where(torch.eq(targets, 1.), alpha_factor, 1. - alpha_factor)
         focal_weight = torch.where(torch.eq(targets, 1.), 1. - classification, classification)
-        focal_weight = alpha_factor * focal_weight ** gamma
+        focal_weight = alpha_factor * torch.pow(focal_weight, gamma)
 
         bce = -(targets * torch.log(classification) + (1.0 - targets) * torch.log(1.0 - classification))
 
@@ -74,6 +78,7 @@ def loss(classifications, regression, anchors, annotations):
         classification_losses.append(cls_loss.sum()/torch.clamp(num_positive_anchors.float(), min=1.0))
 
         # compute the loss for regression
+        
         anchor_widths  = anchor[:, 2] - anchor[:, 0]
         anchor_heights = anchor[:, 3] - anchor[:, 1]
         anchor_ctr_x   = anchor[:, 0] + 0.5 * anchor_widths
@@ -96,15 +101,15 @@ def loss(classifications, regression, anchors, annotations):
         targets = torch.stack((targets_dx, targets_dy, targets_dw, targets_dh))
         targets = targets.t()
 
+        targets = targets/torch.Tensor([[0.1, 0.1, 0.2, 0.2]]).cuda()
+        # targets = targets/torch.Tensor([[1., 1., 1., 1.]]).cuda()
+
 
         negative_indices = 1 - positive_indices
-
 
         regression_diff = torch.abs(targets - regression[j, :, :])
 
         regression_diff[negative_indices, :] = 0
-
-        # regression_diff = regression_diff/torch.Tensor([[0.1, 0.1, 0.2, 0.2]]).cuda()
 
         regression_loss = torch.where(
             torch.le(regression_diff, 1.0 / 9.0),
@@ -114,6 +119,10 @@ def loss(classifications, regression, anchors, annotations):
         if positive_indices.sum() > 0:
             regression_losses.append(regression_loss[positive_indices, :].mean())
         else:
-            regression_losses.append(torch.Tensor([0]).float().cuda())
-
-    return torch.stack(classification_losses).mean(), torch.stack(regression_losses).mean()
+            regression_losses.append(torch.tensor(0).float().cuda())
+        
+    try:
+        return torch.stack(classification_losses).mean(), torch.stack(regression_losses).mean()
+    except:
+        import pdb
+        pdb.set_trace()

@@ -18,10 +18,10 @@ def evaluate_coco(dataset, model, threshold=0.05):
 
     for index in range(len(dataset)):
         data = dataset[index]
-        scale = 1.0
+        scale = data['scale']
 
         # run network
-        scores, labels, boxes = model(data['img'].cuda().float().unsqueeze(dim=0))
+        scores, labels, boxes = model(data['img'].permute(2, 0, 1).cuda().float().unsqueeze(dim=0))
         scores = scores.cpu()
         labels = labels.cpu()
         boxes  = boxes.cpu()
@@ -96,5 +96,7 @@ def evaluate_coco(dataset, model, threshold=0.05):
 
     for index, result in enumerate(coco_eval_stats):
         print('{}. {}: {}'.format(index + 1, coco_tag[index], coco_eval_stats[index]))
+
+    model.train()
 
     return
