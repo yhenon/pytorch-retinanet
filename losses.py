@@ -38,6 +38,7 @@ def loss(classifications, regression, anchors, annotations):
         annotation = annotations[j].float().cuda()
 
         if annotation.shape[0] == 0:
+            print('no annots')
             regression_losses.append(torch.tensor(0).float().cuda())
             classification_losses.append(torch.tensor(0).float().cuda())
             continue
@@ -71,7 +72,8 @@ def loss(classifications, regression, anchors, annotations):
 
         bce = -(targets * torch.log(classification) + (1.0 - targets) * torch.log(1.0 - classification))
 
-        cls_loss = focal_weight * torch.pow(bce, gamma)
+        # cls_loss = focal_weight * torch.pow(bce, gamma)
+        cls_loss = focal_weight * bce
 
         cls_loss = torch.where(torch.ne(targets, -1.0), cls_loss, torch.zeros(cls_loss.shape).cuda())
 
@@ -121,8 +123,4 @@ def loss(classifications, regression, anchors, annotations):
         else:
             regression_losses.append(torch.tensor(0).float().cuda())
         
-    try:
-        return torch.stack(classification_losses).mean(), torch.stack(regression_losses).mean()
-    except:
-        import pdb
-        pdb.set_trace()
+    return torch.stack(classification_losses).mean(), torch.stack(regression_losses).mean()

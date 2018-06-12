@@ -6,7 +6,6 @@ from torch.autograd import Variable
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
-#import matplotlib.pyplot as plt
 import time
 import os
 import copy
@@ -15,26 +14,33 @@ from anchors import Anchors
 import losses
 import pdb
 import time
-from dataloader import CocoDataset, collater, Resizer, Normalizer, UnNormalizer, AspectRatioBasedSampler
+from dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, UnNormalizer, Normalizer
 from torch.utils.data import Dataset, DataLoader
-import cv2 
+
 assert torch.__version__.split('.')[1] == '4'
 import requests
 import coco_eval
 import collections
+import sys
 
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
-model = model.resnet50(pretrained=True)
+coco = False
 
+if coco:
+	dataset_train = CocoDataset('../coco/', set_name='train2017', transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+	dataset_val = CocoDataset('../coco/', set_name='val2017', transform=transforms.Compose([Normalizer(), Resizer()]))
+else:
+	dataset_train = CSVDataset(train_file='/home/gmautomap/../bcaine/data/MightAI_CSV/train_labels.csv', class_list='/home/gmautomap/../bcaine/data/MightAI_CSV/class_idx.csv', transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+	dataset_val = CSVDataset(train_file='/home/gmautomap/../bcaine/data/MightAI_CSV/train_labels.csv', class_list='/home/gmautomap/../bcaine/data/MightAI_CSV/class_idx.csv', transform=transforms.Compose([Normalizer(), Resizer()]))
 
-dataset_train = CocoDataset('../coco/', set_name='train2017', transform=transforms.Compose([Resizer(), Normalizer()]))
-dataset_val = CocoDataset('../coco/', set_name='val2017', transform=transforms.Compose([Resizer(), Normalizer()]))
+model = model.resnet50(num_classes=dataset_train.num_classes(), pretrained=True)
 
-sampler = AspectRatioBasedSampler(dataset_val, batch_size=2, drop_last=False)
+sampler = AspectRatioBasedSampler(dataset_train, batch_size=1, drop_last=False)
+dataloader_train = DataLoader(dataset_train, num_workers=4, collate_fn=collater, batch_sampler=sampler)
 
-dataloader_train = DataLoader(dataset_train, num_workers=1, collate_fn=collater, batch_sampler=sampler)
-# dataloader_val   = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler)
+sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
+dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
 
 use_gpu = True
 
@@ -43,7 +49,15 @@ if use_gpu:
 
 model.training = True
 
+#model_old = torch.load('sgd_model_14.pt')
+
+#model_state = model_old.state_dict()
+
+#model.load_state_dict(model_state)
+
 optimizer = optim.Adam(model.parameters(), lr=1e-5)
+
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, verbose=True)
 
 total_loss = losses.loss
 
@@ -52,82 +66,55 @@ loss_hist = collections.deque(maxlen=500)
 model.train()
 model.freeze_bn()
 
-for i in range(1000):
+num_epochs = 100
+
+print('Num training images: {}'.format(len(dataset_train)))
+
+for epoch_num in range(num_epochs):
 
 	model.train()
 	model.freeze_bn()
 	
-	for idx, data in enumerate(dataloader_train):
+	epoch_loss = []
 	
-		optimizer.zero_grad()
+	for iter_num, data in enumerate(dataloader_train):
+		try:
+			
+			optimizer.zero_grad()
 
-		classification, regression, anchors = model(data['img'].cuda().float())
-		
-		classification_loss, regression_loss = total_loss(classification, regression, anchors, data['annot'])
+			classification, regression, anchors = model(data['img'].cuda().float())
+			
+			classification_loss, regression_loss = total_loss(classification, regression, anchors, data['annot'])
 
-		loss = classification_loss + regression_loss
+			loss = classification_loss + regression_loss
+			
+			if bool(loss == 0):
+				continue
 
-		loss.backward()
+			loss.backward()
 
-		torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
+			torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
 
-		optimizer.step()
+			optimizer.step()
 
-		loss_hist.append(float(loss))
+			loss_hist.append(float(loss))
 
-		print(i, idx, float(classification_loss), float(regression_loss), np.mean(loss_hist))
+			epoch_loss.append(float(loss))
 
+			print('Epoch: {} | Iteration: {} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Running loss: {:1.5f}'.format(epoch_num, iter_num, float(classification_loss), float(regression_loss), np.mean(loss_hist)))
+
+		except Exception as e:
+			print(e)
+			pdb.set_trace()
+	
 	print('Evaluating dataset')
-	coco_eval.evaluate_coco(dataset_val, model)
-
-	torch.save(model, 'model_{}.pt'.format(i))
-
-#model = torch.load('model.pt')
-#model.load_state_dict('mytraining.pt')
+	
+	if coco:
+		coco_eval.evaluate_coco(dataset_val, model)
+	
+	scheduler.step(np.mean(epoch_loss))	
+	torch.save(model, 'csv_model_{}.pt'.format(epoch_num))
 
 model.eval()
 
-unnormalize = UnNormalizer()
-
-
-def draw_caption(image, box, caption):
-	""" Draws a caption above the box in an image.
-	# Arguments
-		image   : The image to draw on.
-		box     : A list of 4 elements (x1, y1, x2, y2).
-		caption : String containing the text to draw.
-	"""
-	b = np.array(box).astype(int)
-	cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (0, 0, 0), 2)
-	cv2.putText(image, caption, (b[0], b[1] - 10), cv2.FONT_HERSHEY_PLAIN, 1, (255, 255, 255), 1)
-
-for idx, data in enumerate(dataloader_val):
-
-	scores, classification, transformed_anchors = model(data['img'].cuda().float())
-
-	idxs = np.where(scores>0.5)
-	img = np.array(unnormalize(data['img']))[0, :, :, :]
-
-	img[img<0] = 0
-	img[img>255] = 255
-
-	img = np.transpose(img, (1,2,0)).astype(np.uint8)
-	print(idxs[0].shape[0])
-	print(scores.max())
-
-	for j in range(idxs[0].shape[0]):
-		bbox = transformed_anchors[idxs[0][j], :]
-		x1 = int(bbox[0])
-		y1 = int(bbox[1])
-		x2 = int(bbox[2])
-		y2 = int(bbox[3])
-		label_name = dataset_val.labels[int(classification[idxs[0][j]])]
-		draw_caption(img, (x1, y1, x2, y2), label_name)
-
-		cv2.rectangle(img, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
-		print(label_name)
-
-	cv2.imshow('img', img)
-	cv2.waitKey(0)
-
-	pdb.set_trace()
+torch.save(model, 'model_final.pt'.format(epoch_num))

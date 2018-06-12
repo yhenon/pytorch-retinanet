@@ -98,3 +98,6 @@ ENV/
 
 # mypy
 .mypy_cache/
+
+*.zip
+*.pt
