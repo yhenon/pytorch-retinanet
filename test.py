@@ -7,7 +7,7 @@ import os
 import copy
 import pdb
 import time
-from dataloader import CocoDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, UnNormalizer, Normalizer
+from dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, UnNormalizer, Normalizer
 from torch.utils.data import Dataset, DataLoader
 
 assert torch.__version__.split('.')[1] == '4'
@@ -17,12 +17,23 @@ import cv2
 
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
-dataset_val = CocoDataset('../coco/', set_name='val2017', transform=transforms.Compose([Normalizer(), Resizer()]))
+coco = False
+
+if coco:
+	dataset_train = CocoDataset('../coco/', set_name='train2017', transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+	dataset_val = CocoDataset('../coco/', set_name='val2017', transform=transforms.Compose([Normalizer(), Resizer()]))
+else:
+	dataset_train = CSVDataset(train_file='/home/gmautomap/../bcaine/data/MightAI_CSV/train_labels.csv', class_list='/home/gmautomap/../bcaine/data/MightAI_CSV/class_idx.csv', transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+	dataset_val = CSVDataset(train_file='/home/gmautomap/../bcaine/data/MightAI_CSV/train_labels.csv', class_list='/home/gmautomap/../bcaine/data/MightAI_CSV/class_idx.csv', transform=transforms.Compose([Normalizer(), Resizer()]))
+
+
+sampler = AspectRatioBasedSampler(dataset_train, batch_size=1, drop_last=False)
+dataloader_train = DataLoader(dataset_train, num_workers=4, collate_fn=collater, batch_sampler=sampler)
 
 sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
 dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
 
-model = torch.load('model.pt')
+model = torch.load('csv_model_3.pt')
 
 use_gpu = True
 
