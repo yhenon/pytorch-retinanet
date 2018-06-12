@@ -6,7 +6,6 @@ from torch.autograd import Variable
 import numpy as np
 import torchvision
 from torchvision import datasets, models, transforms
-#import matplotlib.pyplot as plt
 import time
 import os
 import copy
@@ -15,105 +14,107 @@ from anchors import Anchors
 import losses
 import pdb
 import time
-from dataloader import CocoDataset, collater, ToTensor, Resizer
+from dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, UnNormalizer, Normalizer
 from torch.utils.data import Dataset, DataLoader
-import cv2 
+
 assert torch.__version__.split('.')[1] == '4'
 import requests
 import coco_eval
+import collections
+import sys
 
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
-model = model.resnet18(pretrained=True)
+coco = False
 
-dataset_train = CocoDataset('../coco/', set_name='train2017', transform=transforms.Compose([Resizer(), ToTensor()]))
-dataset_val = CocoDataset('../coco/', set_name='val2017', transform=transforms.Compose([Resizer(), ToTensor()]))
+if coco:
+	dataset_train = CocoDataset('../coco/', set_name='train2017', transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+	dataset_val = CocoDataset('../coco/', set_name='val2017', transform=transforms.Compose([Normalizer(), Resizer()]))
+else:
+	dataset_train = CSVDataset(train_file='/home/gmautomap/../bcaine/data/MightAI_CSV/train_labels.csv', class_list='/home/gmautomap/../bcaine/data/MightAI_CSV/class_idx.csv', transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+	dataset_val = CSVDataset(train_file='/home/gmautomap/../bcaine/data/MightAI_CSV/train_labels.csv', class_list='/home/gmautomap/../bcaine/data/MightAI_CSV/class_idx.csv', transform=transforms.Compose([Normalizer(), Resizer()]))
 
-dataloader_train = DataLoader(dataset_train, batch_size=1, shuffle=True, num_workers=4, collate_fn=collater)
-dataloader_val   = DataLoader(dataset_val, batch_size=1, shuffle=True, num_workers=4, collate_fn=collater)
+model = model.resnet50(num_classes=dataset_train.num_classes(), pretrained=True)
+
+sampler = AspectRatioBasedSampler(dataset_train, batch_size=1, drop_last=False)
+dataloader_train = DataLoader(dataset_train, num_workers=4, collate_fn=collater, batch_sampler=sampler)
+
+sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
+dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
 
 use_gpu = True
 
 if use_gpu:
-    model = model.cuda()
+	model = model.cuda()
 
 model.training = True
 
-optimizer = optim.Adam(model.parameters(), lr=1e-4)
+#model_old = torch.load('sgd_model_14.pt')
+
+#model_state = model_old.state_dict()
+
+#model.load_state_dict(model_state)
+
+optimizer = optim.Adam(model.parameters(), lr=1e-5)
+
+scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, verbose=True)
 
 total_loss = losses.loss
 
-running_loss = 0.0
+loss_hist = collections.deque(maxlen=500)
 
 model.train()
 model.freeze_bn()
 
-for i in range(10):
+num_epochs = 100
+
+print('Num training images: {}'.format(len(dataset_train)))
+
+for epoch_num in range(num_epochs):
 
 	model.train()
+	model.freeze_bn()
+	
+	epoch_loss = []
+	
+	for iter_num, data in enumerate(dataloader_train):
+		try:
+			
+			optimizer.zero_grad()
 
-	for idx, data in enumerate(dataloader_train):
-		
-		optimizer.zero_grad()
+			classification, regression, anchors = model(data['img'].cuda().float())
+			
+			classification_loss, regression_loss = total_loss(classification, regression, anchors, data['annot'])
 
+			loss = classification_loss + regression_loss
+			
+			if bool(loss == 0):
+				continue
 
-		classification, regression, anchors = model(data['img'].cuda().float())
-		if data['annot'][0, 0, 4] == -1:
-			continue
+			loss.backward()
 
-		classification_loss, regression_loss = total_loss(classification, regression, anchors, data['annot'].cuda().float())
+			torch.nn.utils.clip_grad_norm_(model.parameters(), 0.1)
 
-		loss = classification_loss + regression_loss
+			optimizer.step()
 
-		loss.backward()
+			loss_hist.append(float(loss))
 
-		torch.nn.utils.clip_grad_value_(model.parameters(), 0.001)
+			epoch_loss.append(float(loss))
 
-		running_loss = running_loss * 0.99 + 0.01 * loss
+			print('Epoch: {} | Iteration: {} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Running loss: {:1.5f}'.format(epoch_num, iter_num, float(classification_loss), float(regression_loss), np.mean(loss_hist)))
 
-		optimizer.step()
-
-		print(i, idx, classification_loss, regression_loss, running_loss)
-
-		if idx > 10000:
-			break
-
+		except Exception as e:
+			print(e)
+			pdb.set_trace()
+	
 	print('Evaluating dataset')
-	coco_eval.evaluate_coco(dataset_val, model)
-
-#torch.save(model, 'model.pt')
-#model.save_state_dict('mytraining.pt')
-
-#model = torch.load('model.pt')
-#model.load_state_dict('mytraining.pt')
+	
+	if coco:
+		coco_eval.evaluate_coco(dataset_val, model)
+	
+	scheduler.step(np.mean(epoch_loss))	
+	torch.save(model, 'csv_model_{}.pt'.format(epoch_num))
 
 model.eval()
 
-for i in range(100):
-
-	for idx, data in enumerate(dataloader):
-	
-		scores, classification, transformed_anchors = model(data['img'].cuda().float())
-
-		idxs = np.where(scores>0.8)
-		img = np.transpose(np.array(data['img'])[0, :, :, :], (1,2,0)).astype(np.uint8)
-		
-		print(idxs[0].shape[0])
-
-		for j in range(idxs[0].shape[0]):
-			bbox = transformed_anchors[idxs[0][j], :]
-			x1 = int(bbox[0])
-			y1 = int(bbox[1])
-			x2 = int(bbox[2])
-			y2 = int(bbox[3])
-
-			print(classification[idxs[0][j]])
-
-			cv2.rectangle(img, (x1, y1), (x2, y2), color=(0, 0, 255), thickness=2)
-		cv2.imshow('img', img)
-		cv2.waitKey(0)
-
-pdb.set_trace()
-
-# Observe that all parameters are being optimized
-
+torch.save(model, 'model_final.pt'.format(epoch_num))

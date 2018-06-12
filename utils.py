@@ -87,7 +87,6 @@ class BBoxTransform(nn.Module):
             self.mean = mean
         if std is None:
             self.std = torch.from_numpy(np.array([0.1, 0.1, 0.2, 0.2]).astype(np.float32)).cuda()
-            self.std = torch.from_numpy(np.array([1.0, 1.0, 1.0, 1.0]).astype(np.float32)).cuda()
         else:
             self.std = std
 
@@ -116,3 +115,21 @@ class BBoxTransform(nn.Module):
         pred_boxes = torch.stack([pred_boxes_x1, pred_boxes_y1, pred_boxes_x2, pred_boxes_y2], dim=2)
 
         return pred_boxes
+
+
+class ClipBoxes(nn.Module):
+
+    def __init__(self, width=None, height=None):
+        super(ClipBoxes, self).__init__()
+
+    def forward(self, boxes, img):
+
+        batch_size, num_channels, height, width = img.shape
+
+        boxes[:, :, 0] = torch.clamp(boxes[:, :, 0], min=0)
+        boxes[:, :, 1] = torch.clamp(boxes[:, :, 1], min=0)
+
+        boxes[:, :, 2] = torch.clamp(boxes[:, :, 2], max=width)
+        boxes[:, :, 3] = torch.clamp(boxes[:, :, 3], max=height)
+      
+        return boxes
