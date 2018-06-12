@@ -252,10 +252,6 @@ class CSVDataset(Dataset):
             annotation[0, 4]  = self.name_to_label(a['class'])
             annotations       = np.append(annotations, annotation, axis=0)
 
-        # transform from [x, y, w, h] to [x1, y1, x2, y2]
-        annotations[:, 2] = annotations[:, 0] + annotations[:, 2]
-        annotations[:, 3] = annotations[:, 1] + annotations[:, 3]
-
         return annotations
 
     def _read_annotations(self, csv_reader, classes):
