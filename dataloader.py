@@ -66,8 +66,8 @@ class CocoDataset(Dataset):
     def __getitem__(self, idx):
 
         img = self.load_image(idx)
-        annot = self.load_annotations(idx)
-        sample = {'img': img, 'annot': annot}
+        annot, mask = self.load_annotations(idx)
+        sample = {'img': img, 'annot': annot, 'mask':mask}
         if self.transform:
             sample = self.transform(sample)
 
@@ -93,7 +93,7 @@ class CocoDataset(Dataset):
 
         # some images appear to miss annotations (like image with id 257034)
         if len(annotations_ids) == 0:
-            return annotations
+            return annotations, masks
 
         # parse annotations
         coco_annotations = self.coco.loadAnns(annotations_ids)
@@ -117,7 +117,7 @@ class CocoDataset(Dataset):
                 cv2.fillPoly(mask, [points.astype(int)], (1,))
             mask = mask[int(a['bbox'][1]):int(a['bbox'][1]+a['bbox'][3]), int(a['bbox'][0]):int(a['bbox'][0]+a['bbox'][2])]
 
-            mask = cv2.resize(255*mask, (28, 28), interpolation=cv2.INTER_NEAREST)
+            mask = cv2.resize(mask, (28, 28), interpolation=cv2.INTER_NEAREST)
 
             masks = np.append(masks, mask[np.newaxis, :, :], axis=0)
 
@@ -146,6 +146,7 @@ def collater(data):
     imgs = [s['img'] for s in data]
     annots = [s['annot'] for s in data]
     scales = [s['scale'] for s in data]
+    masks = [s['mask'] for s in data]
         
     widths = [int(s.shape[0]) for s in imgs]
     heights = [int(s.shape[1]) for s in imgs]
@@ -162,13 +163,13 @@ def collater(data):
 
     padded_imgs = padded_imgs.permute(0, 3, 1, 2)
 
-    return {'img': padded_imgs, 'annot': annots, 'scale': scales}
+    return {'img': padded_imgs, 'annot': annots, 'scale': scales, 'mask': masks}
 
 class Resizer(object):
     """Convert ndarrays in sample to Tensors."""
 
     def __call__(self, sample, min_side=608, max_side=1024):
-        image, annots = sample['img'], sample['annot']
+        image, annots, masks = sample['img'], sample['annot'], sample['mask']
 
         rows, cols, cns = image.shape
 
@@ -196,7 +197,7 @@ class Resizer(object):
 
         annots[:, :4] *= scale
 
-        return {'img': torch.from_numpy(new_image), 'annot': torch.from_numpy(annots), 'scale': scale}
+        return {'img': torch.from_numpy(new_image), 'annot': torch.from_numpy(annots), 'scale': scale, 'mask': torch.from_numpy(masks.copy())}
 
 
 class Augmenter(object):
@@ -205,8 +206,9 @@ class Augmenter(object):
     def __call__(self, sample, flip_x=0.5):
 
         if np.random.rand() < flip_x:
-            image, annots = sample['img'], sample['annot']
+            image, annots, masks = sample['img'], sample['annot'], sample['mask']
             image = image[:, ::-1, :]
+            masks = masks[:, ::-1, :]
 
             rows, cols, channels = image.shape
 
@@ -218,7 +220,7 @@ class Augmenter(object):
             annots[:, 0] = cols - x2
             annots[:, 2] = cols - x_tmp
 
-            sample = {'img': image, 'annot': annots}
+            sample = {'img': image, 'annot': annots, 'mask': masks}
 
         return sample
 
@@ -231,9 +233,9 @@ class Normalizer(object):
 
     def __call__(self, sample):
 
-        image, annots = sample['img'], sample['annot']
+        image, annots, masks = sample['img'], sample['annot'], sample['mask']
 
-        return {'img':((image.astype(np.float32)-self.mean)/self.std), 'annot': annots}
+        return {'img':((image.astype(np.float32)-self.mean)/self.std), 'annot': annots, 'mask': masks}
 
 class UnNormalizer(object):
     def __init__(self, mean=None, std=None):

@@ -73,13 +73,13 @@ def main(args=None):
 	else:
 		raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
 
-	for i in range(100):
-		dataset_train[i]
-	sampler = AspectRatioBasedSampler(dataset_train, batch_size=1, drop_last=False)
+	batch_size = 1
+
+	sampler = AspectRatioBasedSampler(dataset_train, batch_size=batch_size, drop_last=False)
 	dataloader_train = DataLoader(dataset_train, num_workers=4, collate_fn=collater, batch_sampler=sampler)
 
 	if dataset_val is not None:
-		sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
+		sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=batch_size, drop_last=False)
 		dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
 
 	# Create the model
@@ -129,9 +129,9 @@ def main(args=None):
 
 				classification, regression, masks, anchors = retinanet(data['img'].cuda().float())
 				
-				classification_loss, regression_loss = total_loss(classification, regression, masks, anchors, data['annot'])
+				classification_loss, regression_loss, mask_loss = total_loss(classification, regression, masks, anchors, data['annot'], data['mask'])
 
-				loss = classification_loss + regression_loss
+				loss = classification_loss + regression_loss + mask_loss
 				
 				if bool(loss == 0):
 					continue
@@ -146,11 +146,14 @@ def main(args=None):
 
 				epoch_loss.append(float(loss))
 
-				print('Epoch: {} | Iteration: {} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Running loss: {:1.5f}'.format(epoch_num, iter_num, float(classification_loss), float(regression_loss), np.mean(loss_hist)))
+				print('Epoch: {} | Iteration: {} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Mask loss: {:1.5f} | Running loss: {:1.5f}'.format(epoch_num, iter_num, float(classification_loss), float(regression_loss), float(mask_loss), np.mean(loss_hist)))
+
+				del loss, classification_loss, regression_loss, mask_loss
 
 			except Exception as e:
 				print(e)
 		
+		torch.save(retinanet, '{}_retinanet_{}.pt'.format(parser.dataset, epoch_num))
 		
 		if parser.dataset == 'coco':
 			print('Evaluating dataset')
@@ -187,7 +190,6 @@ def main(args=None):
 		
 		scheduler.step(np.mean(epoch_loss))	
 
-		torch.save(retinanet, '{}_retinanet_{}.pt'.format(parser.dataset, epoch_num))
 
 	retinanet.eval()
 

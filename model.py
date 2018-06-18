@@ -5,7 +5,7 @@ import time
 import torch.utils.model_zoo as model_zoo
 from utils import BasicBlock, Bottleneck, BBoxTransform, ClipBoxes
 from anchors import Anchors
-
+from torch.utils.checkpoint import checkpoint, checkpoint_sequential
 from lib.nms.pth_nms import pth_nms
 
 def nms(dets, thresh):
@@ -160,10 +160,11 @@ class ClassificationModel(nn.Module):
 
 
 class MaskModel(nn.Module):
-    def __init__(self, num_features_in, mask_size=28, feature_size=256):
+    def __init__(self, num_features_in, num_anchors=9, mask_size=28, feature_size=256):
         super(MaskModel, self).__init__()
 
         self.mask_size = mask_size
+        self.num_anchors = num_anchors
         
         self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
         self.act1 = nn.ReLU()
@@ -177,30 +178,20 @@ class MaskModel(nn.Module):
         self.conv4 = nn.Conv2d(feature_size, feature_size, kernel_size=3, padding=1)
         self.act4 = nn.ReLU()
 
-        self.conv5 = nn.Conv2d(feature_size, mask_size*mask_size, kernel_size=3, padding=1)
+        self.conv5 = nn.Conv2d(feature_size, num_anchors*mask_size*mask_size, kernel_size=1, padding=0)
         self.output = nn.Sigmoid()
+
+        self.model = torch.nn.Sequential(self.conv1, self.act1, self.conv2, self.act2, self.conv3, self.act3, self.conv4, self.act4, self.conv5, self.output)
 
     def forward(self, x):
 
-        out = self.conv1(x)
-        out = self.act1(out)
+        # out = checkpoint_sequential(self.model, 4, x)
+        out = self.model(x)
 
-        out = self.conv2(out)
-        out = self.act2(out)
-
-        out = self.conv3(out)
-        out = self.act3(out)
-
-        out = self.conv4(out)
-        out = self.act4(out)
-
-        out = self.conv5(out)
-        out = self.output(out)
-
-        # out is B x C x W x H, with C = mask_size*mask_size
+        # out is B x C x W x H, with C = mask_size*mask_size*num_anchors
         out = out.permute(0, 2, 3, 1)
 
-        return out.contiguous().view(out.shape[0], -1, self.mask_size * self.mask_size)
+        return out.contiguous().view(out.shape[0], -1, self.mask_size, self.mask_size)
 
 
 class ResNet(nn.Module):
@@ -310,9 +301,10 @@ class ResNet(nn.Module):
 
             if scores_over_thresh.sum() == 0:
                 # no boxes to NMS, just return
-                return [torch.zeros(0), torch.zeros(0), torch.zeros(0, 4)]
+                return [torch.zeros(0), torch.zeros(0), torch.zeros(0, 4), torch.zeros(0, 28, 28)]
 
             classification = classification[:, scores_over_thresh, :]
+            masks = masks[:, scores_over_thresh, :]
             transformed_anchors = transformed_anchors[:, scores_over_thresh, :]
             scores = scores[:, scores_over_thresh, :]
 
@@ -320,7 +312,7 @@ class ResNet(nn.Module):
 
             nms_scores, nms_class = classification[0, anchors_nms_idx, :].max(dim=1)
 
-            return [nms_scores, nms_class, transformed_anchors[0, anchors_nms_idx, :]]
+            return [nms_scores, nms_class, transformed_anchors[0, anchors_nms_idx, :], masks[0, anchors_nms_idx, :]]
 
 
 

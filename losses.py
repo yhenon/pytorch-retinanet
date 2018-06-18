@@ -22,30 +22,35 @@ def calc_iou(a, b):
 
     return IoU
 
-def loss(classifications, regression, masks, anchors, annotations):
+def loss(classifications, regression, masks, anchors, bbox_annotations, mask_annotations):
     alpha = 0.25
     gamma = 2.0
     batch_size = classifications.shape[0]
 
     classification_losses = []
     regression_losses = []
+    mask_losses = []
 
     anchor = anchors[0, :, :]
     
     for j in range(batch_size):
 
         classification = classifications[j, :, :]
-        annotation = annotations[j].float().cuda()
+        mask = masks[j, :, :, :]
+        bbox_annotation = bbox_annotations[j].float().cuda()
+        mask_annotation = mask_annotations[j].float().cuda()
 
-        if annotation.shape[0] == 0:
+        if bbox_annotation.shape[0] == 0:
             print('no annots')
             regression_losses.append(torch.tensor(0).float().cuda())
             classification_losses.append(torch.tensor(0).float().cuda())
+            mask_losses.append(torch.tensor(0).float().cuda())
+
             continue
 
         classification = torch.clamp(classification, 1e-4, 1.0 - 1e-4)
 
-        IoU = calc_iou(anchors[0, :, :], annotation[:, :4]) # num_anchors x num_annotations
+        IoU = calc_iou(anchors[0, :, :], bbox_annotation[:, :4]) # num_anchors x num_annotations
 
         IoU_max, IoU_argmax = torch.max(IoU, dim=1) # num_anchors x 1
 
@@ -59,7 +64,8 @@ def loss(classifications, regression, masks, anchors, annotations):
 
         num_positive_anchors = positive_indices.sum()
 
-        assigned_annotations = annotation[IoU_argmax, :]
+        assigned_annotations = bbox_annotation[IoU_argmax, :]
+        assigned_masks = mask_annotation[IoU_argmax, :]
 
         targets[positive_indices, :] = 0
         targets[positive_indices, assigned_annotations[positive_indices, 4].long()] = 1
@@ -122,6 +128,18 @@ def loss(classifications, regression, masks, anchors, annotations):
             regression_losses.append(regression_loss[positive_indices, :].mean())
         else:
             regression_losses.append(torch.tensor(0).float().cuda())
-        import pdb
-        pdb.set_trace()
-    return torch.stack(classification_losses).mean(), torch.stack(regression_losses).mean()
+
+        if positive_indices.sum() > 0:
+            mask  = torch.clamp(mask[positive_indices, :, :], min=1e-4, max=1-1e-4)
+
+            mask_loss = -(assigned_masks[positive_indices, :, :] * torch.log(mask) + (1.0 - assigned_masks[positive_indices, :, :]) * torch.log(1.0 - mask))
+
+            mask_losses.append(mask_loss.mean())
+            #print(mask_loss.mean())
+            #if mask_loss.mean() < 0:
+            #    import pdb
+            #    pdb.set_trace()
+        else:
+            mask_losses.append(torch.tensor(0).float().cuda())
+
+    return torch.stack(classification_losses).mean(), torch.stack(regression_losses).mean(), torch.stack(mask_losses).mean()
