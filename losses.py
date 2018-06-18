@@ -22,7 +22,7 @@ def calc_iou(a, b):
 
     return IoU
 
-def loss(classifications, regression, anchors, annotations):
+def loss(classifications, regression, masks, anchors, annotations):
     alpha = 0.25
     gamma = 2.0
     batch_size = classifications.shape[0]
@@ -122,5 +122,6 @@ def loss(classifications, regression, anchors, annotations):
             regression_losses.append(regression_loss[positive_indices, :].mean())
         else:
             regression_losses.append(torch.tensor(0).float().cuda())
-        
+        import pdb
+        pdb.set_trace()
     return torch.stack(classification_losses).mean(), torch.stack(regression_losses).mean()

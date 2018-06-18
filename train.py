@@ -19,7 +19,7 @@ import torchvision
 import model
 from anchors import Anchors
 import losses
-from dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, UnNormalizer, Normalizer
+from dataloader import CocoDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, UnNormalizer, Normalizer
 from torch.utils.data import Dataset, DataLoader
 
 import coco_eval
@@ -73,6 +73,8 @@ def main(args=None):
 	else:
 		raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
 
+	for i in range(100):
+		dataset_train[i]
 	sampler = AspectRatioBasedSampler(dataset_train, batch_size=1, drop_last=False)
 	dataloader_train = DataLoader(dataset_train, num_workers=4, collate_fn=collater, batch_sampler=sampler)
 
@@ -125,9 +127,9 @@ def main(args=None):
 			try:
 				optimizer.zero_grad()
 
-				classification, regression, anchors = retinanet(data['img'].cuda().float())
+				classification, regression, masks, anchors = retinanet(data['img'].cuda().float())
 				
-				classification_loss, regression_loss = total_loss(classification, regression, anchors, data['annot'])
+				classification_loss, regression_loss = total_loss(classification, regression, masks, anchors, data['annot'])
 
 				loss = classification_loss + regression_loss
 				
