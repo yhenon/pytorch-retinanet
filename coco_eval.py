@@ -24,7 +24,7 @@ def evaluate_coco(dataset, model, threshold=0.05):
             scale = data['scale']
 
             # run network
-            scores, labels, boxes = model(data['img'].permute(2, 0, 1).cuda().float().unsqueeze(dim=0))
+            scores, labels, boxes, masks = model(data['img'].permute(2, 0, 1).cuda().float().unsqueeze(dim=0))
             scores = scores.cpu()
             labels = labels.cpu()
             boxes  = boxes.cpu()
