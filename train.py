@@ -73,8 +73,10 @@ def main(args=None):
 	else:
 		raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
 
-	sampler = AspectRatioBasedSampler(dataset_train, batch_size=1, drop_last=False)
-	dataloader_train = DataLoader(dataset_train, num_workers=4, collate_fn=collater, batch_sampler=sampler)
+	sampler = AspectRatioBasedSampler(dataset_train, batch_size=2, drop_last=False)
+	dataloader_train = DataLoader(dataset_train, num_workers=1, collate_fn=collater, batch_sampler=sampler)
+	for iter_num, data in enumerate(dataloader_train):
+		pass
 
 	if dataset_val is not None:
 		sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
@@ -98,6 +100,8 @@ def main(args=None):
 
 	if use_gpu:
 		retinanet = retinanet.cuda()
+	
+	retinanet = torch.nn.DataParallel(retinanet).cuda()
 
 	retinanet.training = True
 
@@ -105,19 +109,17 @@ def main(args=None):
 
 	scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, verbose=True)
 
-	total_loss = losses.loss
-
 	loss_hist = collections.deque(maxlen=500)
 
 	retinanet.train()
-	retinanet.freeze_bn()
+	#retinanet.freeze_bn()
 
 	print('Num training images: {}'.format(len(dataset_train)))
 
 	for epoch_num in range(parser.epochs):
 
 		retinanet.train()
-		retinanet.freeze_bn()
+		#retinanet.freeze_bn()
 		
 		epoch_loss = []
 		
@@ -127,7 +129,11 @@ def main(args=None):
 
 				classification, regression, anchors = retinanet(data['img'].cuda().float())
 				
-				classification_loss, regression_loss = total_loss(classification, regression, anchors, data['annot'])
+				# classification_loss, regression_loss = total_loss(classification, regression, anchors, data['annot'])
+				classification_loss, regression_loss = retinanet([data['img'].cuda().float(), data['annot']])
+
+				classification_loss = classification_loss.mean()
+				regression_loss = regression_loss.mean()
 
 				loss = classification_loss + regression_loss
 				
@@ -145,6 +151,9 @@ def main(args=None):
 				epoch_loss.append(float(loss))
 
 				print('Epoch: {} | Iteration: {} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Running loss: {:1.5f}'.format(epoch_num, iter_num, float(classification_loss), float(regression_loss), np.mean(loss_hist)))
+				
+				del classification_loss
+				del regression_loss
 
 			except Exception as e:
 				print(e)

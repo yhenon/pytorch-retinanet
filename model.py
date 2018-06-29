@@ -5,7 +5,7 @@ import time
 import torch.utils.model_zoo as model_zoo
 from utils import BasicBlock, Bottleneck, BBoxTransform, ClipBoxes
 from anchors import Anchors
-
+import losses
 from lib.nms.pth_nms import pth_nms
 
 def nms(dets, thresh):
@@ -188,6 +188,8 @@ class ResNet(nn.Module):
         self.regressBoxes = BBoxTransform()
 
         self.clipBoxes = ClipBoxes()
+        
+        self.focalLoss = losses.FocalLoss()
                 
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
@@ -230,8 +232,13 @@ class ResNet(nn.Module):
             if isinstance(layer, nn.BatchNorm2d):
                 layer.eval()
 
-    def forward(self, img_batch):
+    def forward(self, inputs):
 
+        if self.training:
+            img_batch, annotations = inputs
+        else:
+            img_batch = inputs
+            
         x = self.conv1(img_batch)
         x = self.bn1(x)
         x = self.relu(x)
@@ -251,7 +258,8 @@ class ResNet(nn.Module):
         anchors = self.anchors(img_batch)
 
         if self.training:
-            return [classification, regression, anchors]
+            # loss1, loss2 = self.focalLoss(classification, regression, anchors, annotations)
+            return self.focalLoss(classification, regression, anchors, annotations)
         else:
             transformed_anchors = self.regressBoxes(anchors, regression)
             transformed_anchors = self.clipBoxes(transformed_anchors, img_batch)
