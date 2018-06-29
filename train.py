@@ -75,8 +75,6 @@ def main(args=None):
 
 	sampler = AspectRatioBasedSampler(dataset_train, batch_size=2, drop_last=False)
 	dataloader_train = DataLoader(dataset_train, num_workers=1, collate_fn=collater, batch_sampler=sampler)
-	for iter_num, data in enumerate(dataloader_train):
-		pass
 
 	if dataset_val is not None:
 		sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
@@ -112,14 +110,14 @@ def main(args=None):
 	loss_hist = collections.deque(maxlen=500)
 
 	retinanet.train()
-	#retinanet.freeze_bn()
+	retinanet.module.freeze_bn()
 
 	print('Num training images: {}'.format(len(dataset_train)))
 
 	for epoch_num in range(parser.epochs):
 
 		retinanet.train()
-		#retinanet.freeze_bn()
+		retinanet.module.freeze_bn()
 		
 		epoch_loss = []
 		
@@ -127,9 +125,6 @@ def main(args=None):
 			try:
 				optimizer.zero_grad()
 
-				classification, regression, anchors = retinanet(data['img'].cuda().float())
-				
-				# classification_loss, regression_loss = total_loss(classification, regression, anchors, data['annot'])
 				classification_loss, regression_loss = retinanet([data['img'].cuda().float(), data['annot']])
 
 				classification_loss = classification_loss.mean()
@@ -154,6 +149,7 @@ def main(args=None):
 				
 				del classification_loss
 				del regression_loss
+
 
 			except Exception as e:
 				print(e)
