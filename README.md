@@ -63,6 +63,17 @@ python train.py --dataset csv --csv_train <path/to/train_annots.csv>  --csv_clas
 
 Note that the --csv_val argument is optional, in which case no validation will be performed.
 
+## Pre-trained model
+
+A pre-trained model is available at: https://drive.google.com/open?id=1yLmjq3JtXi841yXWBxst0coAgR26MNBS
+
+This model can be loaded using:
+
+```
+retinanet = model.resnet50(num_classes=dataset_train.num_classes(),)
+retinanet.load_state_dict(torch.load(PATH_TO_WEIGHTS))
+```
+
 ## Visualization
 
 To visualize the network detection, use `visualize.py`:
