@@ -25,11 +25,9 @@ class FocalLoss(nn.Module):
     #def __init__(self):
 
     def forward(self, classifications, regressions, anchors, annotations):
-
         alpha = 0.25
         gamma = 2.0
         batch_size = classifications.shape[0]
-
         classification_losses = []
         regression_losses = []
 
@@ -49,7 +47,6 @@ class FocalLoss(nn.Module):
             bbox_annotation = bbox_annotation[bbox_annotation[:, 4] != -1]
 
             if bbox_annotation.shape[0] == 0:
-                print('no annots')
                 regression_losses.append(torch.tensor(0).float().cuda())
                 classification_losses.append(torch.tensor(0).float().cuda())
 
