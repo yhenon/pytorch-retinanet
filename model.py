@@ -257,7 +257,6 @@ class ResNet(nn.Module):
         anchors = self.anchors(img_batch)
 
         if self.training:
-            # loss1, loss2 = self.focalLoss(classification, regression, anchors, annotations)
             return self.focalLoss(classification, regression, anchors, annotations)
         else:
             transformed_anchors = self.regressBoxes(anchors, regression)
