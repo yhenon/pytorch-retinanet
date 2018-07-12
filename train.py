@@ -23,6 +23,7 @@ from dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBa
 from torch.utils.data import Dataset, DataLoader
 
 import coco_eval
+import csv_eval
 
 assert torch.__version__.split('.')[1] == '4'
 
@@ -73,12 +74,12 @@ def main(args=None):
 	else:
 		raise ValueError('Dataset type not understood (must be csv or coco), exiting.')
 
-	sampler = AspectRatioBasedSampler(dataset_train, batch_size=1, drop_last=False)
-	dataloader_train = DataLoader(dataset_train, num_workers=4, collate_fn=collater, batch_sampler=sampler)
+	sampler = AspectRatioBasedSampler(dataset_train, batch_size=2, drop_last=False)
+	dataloader_train = DataLoader(dataset_train, num_workers=3, collate_fn=collater, batch_sampler=sampler)
 
 	if dataset_val is not None:
 		sampler_val = AspectRatioBasedSampler(dataset_val, batch_size=1, drop_last=False)
-		dataloader_val = DataLoader(dataset_val, num_workers=1, collate_fn=collater, batch_sampler=sampler_val)
+		dataloader_val = DataLoader(dataset_val, num_workers=3, collate_fn=collater, batch_sampler=sampler_val)
 
 	# Create the model
 	if parser.depth == 18:
@@ -98,6 +99,8 @@ def main(args=None):
 
 	if use_gpu:
 		retinanet = retinanet.cuda()
+	
+	retinanet = torch.nn.DataParallel(retinanet).cuda()
 
 	retinanet.training = True
 
@@ -105,19 +108,17 @@ def main(args=None):
 
 	scheduler = optim.lr_scheduler.ReduceLROnPlateau(optimizer, patience=3, verbose=True)
 
-	total_loss = losses.loss
-
 	loss_hist = collections.deque(maxlen=500)
 
 	retinanet.train()
-	retinanet.freeze_bn()
+	retinanet.module.freeze_bn()
 
 	print('Num training images: {}'.format(len(dataset_train)))
 
 	for epoch_num in range(parser.epochs):
 
 		retinanet.train()
-		retinanet.freeze_bn()
+		retinanet.module.freeze_bn()
 		
 		epoch_loss = []
 		
@@ -125,9 +126,10 @@ def main(args=None):
 			try:
 				optimizer.zero_grad()
 
-				classification, regression, anchors = retinanet(data['img'].cuda().float())
-				
-				classification_loss, regression_loss = total_loss(classification, regression, anchors, data['annot'])
+				classification_loss, regression_loss = retinanet([data['img'].cuda().float(), data['annot']])
+
+				classification_loss = classification_loss.mean()
+				regression_loss = regression_loss.mean()
 
 				loss = classification_loss + regression_loss
 				
@@ -145,47 +147,29 @@ def main(args=None):
 				epoch_loss.append(float(loss))
 
 				print('Epoch: {} | Iteration: {} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Running loss: {:1.5f}'.format(epoch_num, iter_num, float(classification_loss), float(regression_loss), np.mean(loss_hist)))
-
+				
+				del classification_loss
+				del regression_loss
 			except Exception as e:
 				print(e)
-		
-		
+				continue
+
 		if parser.dataset == 'coco':
+
 			print('Evaluating dataset')
 
 			coco_eval.evaluate_coco(dataset_val, retinanet)
 
 		elif parser.dataset == 'csv' and parser.csv_val is not None:
+
 			print('Evaluating dataset')
 
-			total_loss_joint = 0.0
-			total_loss_classification = 0.0
-			total_loss_regression = 0.0
+			mAP = csv_eval.evaluate(dataset_val, retinanet)
 
-			for iter_num, data in enumerate(dataloader_val):
-
-				if iter_num % 100 == 0:
-					print('{}/{}'.format(iter_num, len(dataset_val)))
-
-				with torch.no_grad():			
-					classification, regression, anchors = retinanet(data['img'].cuda().float())
-					
-					classification_loss, regression_loss = total_loss(classification, regression, anchors, data['annot'])
-
-					total_loss_joint += float(classification_loss + regression_loss)
-					total_loss_regression += float(regression_loss)
-					total_loss_classification += float(classification_loss)
-
-			total_loss_joint /= float(len(dataset_val))
-			total_loss_classification /= float(len(dataset_val))
-			total_loss_regression /= float(len(dataset_val))
-
-			print('Validation epoch: {} | Classification loss: {:1.5f} | Regression loss: {:1.5f} | Total loss: {:1.5f}'.format(epoch_num, float(total_loss_classification), float(total_loss_regression), float(total_loss_joint)))
-		
 		
 		scheduler.step(np.mean(epoch_loss))	
 
-		torch.save(retinanet, '{}_retinanet_{}.pt'.format(parser.dataset, epoch_num))
+		torch.save(retinanet.module, '{}_retinanet_{}.pt'.format(parser.dataset, epoch_num))
 
 	retinanet.eval()
 
