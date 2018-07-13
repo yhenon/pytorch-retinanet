@@ -32,31 +32,32 @@ def evaluate_coco(dataset, model, threshold=0.05):
             # correct boxes for image scale
             boxes /= scale
 
-            # change to (x, y, w, h) (MS COCO standard)
-            boxes[:, 2] -= boxes[:, 0]
-            boxes[:, 3] -= boxes[:, 1]
+            if boxes.shape[0] > 0:
+                # change to (x, y, w, h) (MS COCO standard)
+                boxes[:, 2] -= boxes[:, 0]
+                boxes[:, 3] -= boxes[:, 1]
 
-            # compute predicted labels and scores
-            #for box, score, label in zip(boxes[0], scores[0], labels[0]):
-            for box_id in range(boxes.shape[0]):
-                score = float(scores[box_id])
-                label = int(labels[box_id])
-                box = boxes[box_id, :]
+                # compute predicted labels and scores
+                #for box, score, label in zip(boxes[0], scores[0], labels[0]):
+                for box_id in range(boxes.shape[0]):
+                    score = float(scores[box_id])
+                    label = int(labels[box_id])
+                    box = boxes[box_id, :]
 
-                # scores are sorted, so we can break
-                if score < threshold:
-                    break
+                    # scores are sorted, so we can break
+                    if score < threshold:
+                        break
 
-                # append detection for each positively labeled class
-                image_result = {
-                    'image_id'    : dataset.image_ids[index],
-                    'category_id' : dataset.label_to_coco_label(label),
-                    'score'       : float(score),
-                    'bbox'        : box.tolist(),
-                }
+                    # append detection for each positively labeled class
+                    image_result = {
+                        'image_id'    : dataset.image_ids[index],
+                        'category_id' : dataset.label_to_coco_label(label),
+                        'score'       : float(score),
+                        'bbox'        : box.tolist(),
+                    }
 
-                # append detection to results
-                results.append(image_result)
+                    # append detection to results
+                    results.append(image_result)
 
             # append image to list of processed images
             image_ids.append(dataset.image_ids[index])
