@@ -2,7 +2,6 @@ from __future__ import print_function, division
 import sys
 import os
 import torch
-import pandas as pd
 import numpy as np
 import random
 import csv
@@ -156,9 +155,6 @@ class CSVDataset(Dataset):
         except ValueError as e:
             raise_from(ValueError('invalid CSV annotations file: {}: {}'.format(self.train_file, e)), None)
         self.image_names = list(self.image_data.keys())
-
-        #import pdb
-        #pdb.set_trace()
 
     def _parse(self, value, function, fmt):
         """
@@ -324,14 +320,19 @@ def collater(data):
         padded_imgs[i, :int(img.shape[0]), :int(img.shape[1]), :] = img
 
     max_num_annots = max(annot.shape[0] for annot in annots)
-
-    annot_padded = torch.ones((len(annots), max_num_annots, 5)) * -1
-    #print(annot_padded.shape)
+    
     if max_num_annots > 0:
-        for idx, annot in enumerate(annots):
-            #print(annot.shape)
-            if annot.shape[0] > 0:
-                annot_padded[idx, :annot.shape[0], :] = annot
+
+        annot_padded = torch.ones((len(annots), max_num_annots, 5)) * -1
+
+        if max_num_annots > 0:
+            for idx, annot in enumerate(annots):
+                #print(annot.shape)
+                if annot.shape[0] > 0:
+                    annot_padded[idx, :annot.shape[0], :] = annot
+    else:
+        annot_padded = torch.ones((len(annots), 1, 5)) * -1
+
 
     padded_imgs = padded_imgs.permute(0, 3, 1, 2)
 
