@@ -31,8 +31,6 @@ pip install pycocotools
 
 pip install cython
 
-pip install pycocotools
-
 pip install opencv-python
 
 pip install requests
