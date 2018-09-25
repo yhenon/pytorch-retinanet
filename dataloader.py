@@ -447,9 +447,9 @@ class AspectRatioBasedSampler(Sampler):
 
     def __len__(self):
         if self.drop_last:
-            return len(self.sampler) // self.batch_size
+            return len(self.data_source) // self.batch_size
         else:
-            return (len(self.sampler) + self.batch_size - 1) // self.batch_size
+            return (len(self.data_source) + self.batch_size - 1) // self.batch_size
 
     def group_images(self):
         # determine the order of the images
