@@ -3,9 +3,9 @@ import torch
 import math
 import time
 import torch.utils.model_zoo as model_zoo
-from utils import BasicBlock, Bottleneck, BBoxTransform, ClipBoxes, non_max_suppression
-from anchors import Anchors
-import losses
+from .utils import BasicBlock, Bottleneck, BBoxTransform, ClipBoxes, non_max_suppression
+from .anchors import Anchors
+from . import losses
 
 def nms(dets, thresh):
     """
