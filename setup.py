@@ -1,4 +1,5 @@
 from distutils.core import setup
-setup(name='pytorch_retinanet',
-      version='0.0.1'
+setup(name="pytorch_retinanet",
+      version="0.0.1",
+      packages=["pytorch_retinanet"]
       )
