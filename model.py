@@ -24,7 +24,7 @@ model_urls = {
 class PyramidFeatures(nn.Module):
     def __init__(self, C3_size, C4_size, C5_size, feature_size=256):
         super(PyramidFeatures, self).__init__()
-        
+
         # upsample C5 to get P5 from the FPN paper
         self.P5_1           = nn.Conv2d(C5_size, feature_size, kernel_size=1, stride=1, padding=0)
         self.P5_upsampled   = nn.Upsample(scale_factor=2, mode='nearest')
@@ -53,7 +53,7 @@ class PyramidFeatures(nn.Module):
         P5_x = self.P5_1(C5)
         P5_upsampled_x = self.P5_upsampled(P5_x)
         P5_x = self.P5_2(P5_x)
-        
+
         P4_x = self.P4_1(C4)
         P4_x = P5_upsampled_x + P4_x
         P4_upsampled_x = self.P4_upsampled(P4_x)
@@ -74,7 +74,7 @@ class PyramidFeatures(nn.Module):
 class RegressionModel(nn.Module):
     def __init__(self, num_features_in, num_anchors=9, feature_size=256):
         super(RegressionModel, self).__init__()
-        
+
         self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
         self.act1 = nn.ReLU()
 
@@ -116,7 +116,7 @@ class ClassificationModel(nn.Module):
 
         self.num_classes = num_classes
         self.num_anchors = num_anchors
-        
+
         self.conv1 = nn.Conv2d(num_features_in, feature_size, kernel_size=3, padding=1)
         self.act1 = nn.ReLU()
 
@@ -187,9 +187,9 @@ class ResNet(nn.Module):
         self.regressBoxes = BBoxTransform()
 
         self.clipBoxes = ClipBoxes()
-        
+
         self.focalLoss = losses.FocalLoss()
-                
+
         for m in self.modules():
             if isinstance(m, nn.Conv2d):
                 n = m.kernel_size[0] * m.kernel_size[1] * m.out_channels
@@ -199,7 +199,7 @@ class ResNet(nn.Module):
                 m.bias.data.zero_()
 
         prior = 0.01
-        
+
         self.classificationModel.output.weight.data.fill_(0)
         self.classificationModel.output.bias.data.fill_(-math.log((1.0-prior)/prior))
 
@@ -237,7 +237,7 @@ class ResNet(nn.Module):
             img_batch, annotations = inputs
         else:
             img_batch = inputs
-            
+
         x = self.conv1(img_batch)
         x = self.bn1(x)
         x = self.relu(x)
@@ -282,55 +282,85 @@ class ResNet(nn.Module):
 
 
 
-def resnet18(num_classes, pretrained=False, **kwargs):
+def resnet18(num_classes, pretrained=False, device=None, **kwargs):
     """Constructs a ResNet-18 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
+        device: torch.device, to choose between cpu or gpu
     """
     model = ResNet(num_classes, BasicBlock, [2, 2, 2, 2], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet18'], model_dir='.'), strict=False)
+
+    # transfer weights etc. to given device
+    if device:
+        model.to(device)
     return model
 
 
-def resnet34(num_classes, pretrained=False, **kwargs):
+def resnet34(num_classes, pretrained=False, device=None, **kwargs):
     """Constructs a ResNet-34 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
+        device: torch.device, to choose between cpu or gpu
+
     """
     model = ResNet(num_classes, BasicBlock, [3, 4, 6, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet34'], model_dir='.'), strict=False)
+
+    # transfer weights etc. to given device
+    if device:
+        model.to(device)
+
     return model
 
 
-def resnet50(num_classes, pretrained=False, **kwargs):
+def resnet50(num_classes, pretrained=False, device=None, **kwargs):
     """Constructs a ResNet-50 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
+        device: torch.device, to choose between cpu or gpu
     """
     model = ResNet(num_classes, Bottleneck, [3, 4, 6, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet50'], model_dir='.'), strict=False)
+
+    # transfer weights etc. to given device
+    if device:
+        model.to(device)
+
     return model
 
-def resnet101(num_classes, pretrained=False, **kwargs):
+def resnet101(num_classes, pretrained=False, device=None, **kwargs):
     """Constructs a ResNet-101 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
+        device: torch.device, to choose between cpu or gpu
     """
     model = ResNet(num_classes, Bottleneck, [3, 4, 23, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet101'], model_dir='.'), strict=False)
+
+    # transfer weights etc. to given device
+    if device:
+        model.to(device)
+
     return model
 
 
-def resnet152(num_classes, pretrained=False, **kwargs):
+def resnet152(num_classes, pretrained=False, device=None, **kwargs):
     """Constructs a ResNet-152 model.
     Args:
         pretrained (bool): If True, returns a model pre-trained on ImageNet
+        device: torch.device, to choose between cpu or gpu
     """
     model = ResNet(num_classes, Bottleneck, [3, 8, 36, 3], **kwargs)
     if pretrained:
         model.load_state_dict(model_zoo.load_url(model_urls['resnet152'], model_dir='.'), strict=False)
+
+    # transfer weights etc. to given device
+    if device:
+        model.to(device)
+
     return model

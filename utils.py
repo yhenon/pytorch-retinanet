@@ -82,11 +82,11 @@ class BBoxTransform(nn.Module):
     def __init__(self, mean=None, std=None):
         super(BBoxTransform, self).__init__()
         if mean is None:
-            self.mean = torch.from_numpy(np.array([0, 0, 0, 0]).astype(np.float32)).cuda()
+            self.mean = torch.from_numpy(np.array([0, 0, 0, 0]).astype(np.float32))
         else:
             self.mean = mean
         if std is None:
-            self.std = torch.from_numpy(np.array([0.1, 0.1, 0.2, 0.2]).astype(np.float32)).cuda()
+            self.std = torch.from_numpy(np.array([0.1, 0.1, 0.2, 0.2]).astype(np.float32))
         else:
             self.std = std
 
