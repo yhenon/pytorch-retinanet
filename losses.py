@@ -47,8 +47,8 @@ class FocalLoss(nn.Module):
             bbox_annotation = bbox_annotation[bbox_annotation[:, 4] != -1]
 
             if bbox_annotation.shape[0] == 0:
-                regression_losses.append(torch.tensor(0).float().cuda())
-                classification_losses.append(torch.tensor(0).float().cuda())
+                regression_losses.append(torch.tensor(0).float())
+                classification_losses.append(torch.tensor(0).float())
 
                 continue
 
@@ -63,7 +63,6 @@ class FocalLoss(nn.Module):
 
             # compute the loss for classification
             targets = torch.ones(classification.shape) * -1
-            targets = targets.cuda()
 
             targets[torch.lt(IoU_max, 0.4), :] = 0
 
@@ -76,7 +75,7 @@ class FocalLoss(nn.Module):
             targets[positive_indices, :] = 0
             targets[positive_indices, assigned_annotations[positive_indices, 4].long()] = 1
 
-            alpha_factor = torch.ones(targets.shape).cuda() * alpha
+            alpha_factor = torch.ones(targets.shape) * alpha
 
             alpha_factor = torch.where(torch.eq(targets, 1.), alpha_factor, 1. - alpha_factor)
             focal_weight = torch.where(torch.eq(targets, 1.), 1. - classification, classification)
@@ -87,7 +86,7 @@ class FocalLoss(nn.Module):
             # cls_loss = focal_weight * torch.pow(bce, gamma)
             cls_loss = focal_weight * bce
 
-            cls_loss = torch.where(torch.ne(targets, -1.0), cls_loss, torch.zeros(cls_loss.shape).cuda())
+            cls_loss = torch.where(torch.ne(targets, -1.0), cls_loss, torch.zeros(cls_loss.shape))
 
             classification_losses.append(cls_loss.sum()/torch.clamp(num_positive_anchors.float(), min=1.0))
 
@@ -118,7 +117,7 @@ class FocalLoss(nn.Module):
                 targets = torch.stack((targets_dx, targets_dy, targets_dw, targets_dh))
                 targets = targets.t()
 
-                targets = targets/torch.Tensor([[0.1, 0.1, 0.2, 0.2]]).cuda()
+                targets = targets/torch.Tensor([[0.1, 0.1, 0.2, 0.2]])
 
 
                 negative_indices = 1 - positive_indices
