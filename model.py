@@ -3,15 +3,21 @@ import torch
 import math
 import time
 import torch.utils.model_zoo as model_zoo
-from utils import BasicBlock, Bottleneck, BBoxTransform, ClipBoxes
+from utils import BasicBlock, Bottleneck, BBoxTransform, ClipBoxes, non_max_suppression
 from anchors import Anchors
 import losses
-from lib.nms.pth_nms import pth_nms
 
 def nms(dets, thresh):
-    "Dispatch to either CPU or GPU NMS implementations.\
-    Accept dets as tensor"""
-    return pth_nms(dets, thresh)
+    """
+    Calculate non maximum suppression
+    :param dets: pytorch tensor containing rects and scores
+    :param thresh: overlapping thresh used for nms
+    :return: indices corresponding to the found rectangles
+    """
+    scores = dets[:, 4].detach().numpy()
+    boxes = dets[:, 0:4].detach().numpy()
+
+    return non_max_suppression(boxes, confidences=scores, overlap_thresh=thresh)
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
