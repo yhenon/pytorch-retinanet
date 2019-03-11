@@ -1,4 +1,5 @@
 import torch.nn as nn
+import torch.nn.functional
 import torch
 import math
 import time
@@ -33,12 +34,12 @@ class PyramidFeatures(nn.Module):
 
         # upsample C5 to get P5 from the FPN paper
         self.P5_1           = nn.Conv2d(C5_size, feature_size, kernel_size=1, stride=1, padding=0)
-        self.P5_upsampled   = nn.Upsample(scale_factor=2, mode='nearest')
+        self.P5_upsampled   = nn.functional.interpolate(scale_factor=2, mode='nearest')
         self.P5_2           = nn.Conv2d(feature_size, feature_size, kernel_size=3, stride=1, padding=1)
 
         # add P5 elementwise to C4
         self.P4_1           = nn.Conv2d(C4_size, feature_size, kernel_size=1, stride=1, padding=0)
-        self.P4_upsampled   = nn.Upsample(scale_factor=2, mode='nearest')
+        self.P4_upsampled   = nn.functional.interpolate(scale_factor=2, mode='nearest')
         self.P4_2           = nn.Conv2d(feature_size, feature_size, kernel_size=3, stride=1, padding=1)
 
         # add P4 elementwise to C3
