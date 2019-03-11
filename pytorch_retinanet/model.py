@@ -34,12 +34,10 @@ class PyramidFeatures(nn.Module):
 
         # upsample C5 to get P5 from the FPN paper
         self.P5_1           = nn.Conv2d(C5_size, feature_size, kernel_size=1, stride=1, padding=0)
-        self.P5_upsampled   = nn.functional.interpolate(scale_factor=2, mode='nearest')
         self.P5_2           = nn.Conv2d(feature_size, feature_size, kernel_size=3, stride=1, padding=1)
 
         # add P5 elementwise to C4
         self.P4_1           = nn.Conv2d(C4_size, feature_size, kernel_size=1, stride=1, padding=0)
-        self.P4_upsampled   = nn.functional.interpolate(scale_factor=2, mode='nearest')
         self.P4_2           = nn.Conv2d(feature_size, feature_size, kernel_size=3, stride=1, padding=1)
 
         # add P4 elementwise to C3
@@ -58,12 +56,12 @@ class PyramidFeatures(nn.Module):
         C3, C4, C5 = inputs
 
         P5_x = self.P5_1(C5)
-        P5_upsampled_x = self.P5_upsampled(P5_x)
+        P5_upsampled_x = nn.functional.interpolate(P5_x, scale_factor=2, mode='nearest')
         P5_x = self.P5_2(P5_x)
 
         P4_x = self.P4_1(C4)
         P4_x = P5_upsampled_x + P4_x
-        P4_upsampled_x = self.P4_upsampled(P4_x)
+        P4_upsampled_x = nn.functional.interpolate(P4_x, scale_factor=2, mode='nearest')
         P4_x = self.P4_2(P4_x)
 
         P3_x = self.P3_1(C3)
