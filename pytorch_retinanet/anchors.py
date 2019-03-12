@@ -34,7 +34,7 @@ class Anchors(nn.Module):
 
         all_anchors = np.expand_dims(all_anchors, axis=0)
 
-        return torch.from_numpy(all_anchors.astype(np.float32))
+        return torch.from_numpy(all_anchors).type_as(image)
 
 def generate_anchors(base_size=16, ratios=None, scales=None):
     """

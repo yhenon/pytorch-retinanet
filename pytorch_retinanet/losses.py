@@ -47,8 +47,8 @@ class FocalLoss(nn.Module):
             bbox_annotation = bbox_annotation[bbox_annotation[:, 4] != -1]
 
             if bbox_annotation.shape[0] == 0:
-                regression_losses.append(torch.tensor(0).float())
-                classification_losses.append(torch.tensor(0).float())
+                regression_losses.append(torch.tensor(0).type_as(regressions))
+                classification_losses.append(torch.tensor(0).type_as(classifications))
 
                 continue
 
@@ -62,7 +62,7 @@ class FocalLoss(nn.Module):
             #pdb.set_trace()
 
             # compute the loss for classification
-            targets = torch.ones(classification.shape) * -1
+            targets = torch.ones(classification.shape).type_as(classifications) * -1
 
             targets[torch.lt(IoU_max, 0.4), :] = 0
 
@@ -75,7 +75,7 @@ class FocalLoss(nn.Module):
             targets[positive_indices, :] = 0
             targets[positive_indices, assigned_annotations[positive_indices, 4].long()] = 1
 
-            alpha_factor = torch.ones(targets.shape) * alpha
+            alpha_factor = torch.ones(targets.shape).type_as(classifications) * alpha
 
             alpha_factor = torch.where(torch.eq(targets, 1.), alpha_factor, 1. - alpha_factor)
             focal_weight = torch.where(torch.eq(targets, 1.), 1. - classification, classification)
@@ -117,7 +117,7 @@ class FocalLoss(nn.Module):
                 targets = torch.stack((targets_dx, targets_dy, targets_dw, targets_dh))
                 targets = targets.t()
 
-                targets = targets/torch.Tensor([[0.1, 0.1, 0.2, 0.2]])
+                targets = targets/torch.Tensor([[0.1, 0.1, 0.2, 0.2]]).type_as(classifications)
 
 
                 negative_indices = 1 - positive_indices
@@ -131,7 +131,7 @@ class FocalLoss(nn.Module):
                 )
                 regression_losses.append(regression_loss.mean())
             else:
-                regression_losses.append(torch.tensor(0).float())
+                regression_losses.append(torch.tensor(0).type_as(classifications))
 
         return torch.stack(classification_losses).mean(dim=0, keepdim=True), torch.stack(regression_losses).mean(dim=0, keepdim=True)
 
