@@ -23,18 +23,9 @@ apt-get install tk-dev python-tk
 3) Install the python packages:
 	
 ```
-pip install cffi
-
-pip install pandas
-
-pip install pycocotools
-
-pip install cython
-
-pip install opencv-python
-
-pip install requests
-
+pip install cffi pandas pycocotools cython opencv-python requests matplotlib scikit-image
+pip install https://download.pytorch.org/whl/cu100/torch-1.1.0-cp37-cp37m-linux_x86_64.whl
+pip install https://download.pytorch.org/whl/cu100/torchvision-0.3.0-cp37-cp37m-linux_x86_64.whl
 ```
 
 4) Build the NMS extension.
