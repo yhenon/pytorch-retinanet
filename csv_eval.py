@@ -149,10 +149,11 @@ def _get_annotations(generator):
 def evaluate(
     generator,
     retinanet,
+    log_file,
     iou_threshold=0.5,
     score_threshold=0.05,
     max_detections=100,
-    save_path=None
+    save_path=None,
 ):
     """ Evaluate a given dataset using a given retinanet.
     # Arguments
@@ -233,6 +234,12 @@ def evaluate(
     for label in range(generator.num_classes()):
         label_name = generator.label_to_name(label)
         print('{}: {}'.format(label_name, average_precisions[label][0]))
+     
+    print('\nmAP:', file=log_file)
+    for label in range(generator.num_classes()):
+        label_name = generator.label_to_name(label)
+        print('{}: {}'.format(label_name, average_precisions[label][0]), file=log_file)
     
+
     return average_precisions
 
