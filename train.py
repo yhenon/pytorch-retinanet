@@ -113,7 +113,7 @@ def main(args=None):
         retinanet.module.freeze_bn()
 
         epoch_loss = []
-        '
+
         for iter_num, data in enumerate(dataloader_train):
             try:
                 optimizer.zero_grad()
