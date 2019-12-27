@@ -14,10 +14,11 @@ import torch
 from torch.utils.data import Dataset, DataLoader
 from torchvision import datasets, models, transforms
 
-from dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, UnNormalizer, Normalizer
+from retinanet.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, \
+	UnNormalizer, Normalizer
 
 
-assert torch.__version__.split('.')[1] == '4'
+assert torch.__version__.split('.')[0] == '1'
 
 print('CUDA available: {}'.format(torch.cuda.is_available()))
 
@@ -35,7 +36,7 @@ def main(args=None):
 	parser = parser.parse_args(args)
 
 	if parser.dataset == 'coco':
-		dataset_val = CocoDataset(parser.coco_path, set_name='val2017', transform=transforms.Compose([Normalizer(), Resizer()]))
+		dataset_val = CocoDataset(parser.coco_path, set_name='train2017', transform=transforms.Compose([Normalizer(), Resizer()]))
 	elif parser.dataset == 'csv':
 		dataset_val = CSVDataset(train_file=parser.csv_train, class_list=parser.csv_classes, transform=transforms.Compose([Normalizer(), Resizer()]))
 	else:
@@ -67,7 +68,7 @@ def main(args=None):
 			st = time.time()
 			scores, classification, transformed_anchors = retinanet(data['img'].cuda().float())
 			print('Elapsed time: {}'.format(time.time()-st))
-			idxs = np.where(scores>0.5)
+			idxs = np.where(scores.cpu()>0.5)
 			img = np.array(255 * unnormalize(data['img'][0, :, :, :])).copy()
 
 			img[img<0] = 0

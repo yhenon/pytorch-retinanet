@@ -23,29 +23,12 @@ apt-get install tk-dev python-tk
 3) Install the python packages:
 	
 ```
-pip install cffi
-
 pip install pandas
-
 pip install pycocotools
-
-pip install cython
-
 pip install opencv-python
-
 pip install requests
 
 ```
-
-4) Build the NMS extension.
-
-```
-cd pytorch-retinanet/lib
-bash build.sh
-cd ../
-```
-
-Note that you may have to edit line 14 of `build.sh` if you want to change which version of python you are building the extension for.
 
 ## Training
 
