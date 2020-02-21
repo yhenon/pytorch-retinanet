@@ -50,13 +50,13 @@ def main(args=None):
 	use_gpu = True
 
 	if use_gpu:
-        if torch.cuda.is_available():
-            retinanet = retinanet.cuda()
+		if torch.cuda.is_available():
+			retinanet = retinanet.cuda()
 
-    if torch.cuda.is_available():
-        retinanet = torch.nn.DataParallel(retinanet).cuda()
-    else:
-        retinanet = torch.nn.DataParallel(retinanet)
+	if torch.cuda.is_available():
+		retinanet = torch.nn.DataParallel(retinanet).cuda()
+	else:
+		retinanet = torch.nn.DataParallel(retinanet)
 
 	retinanet.eval()
 
