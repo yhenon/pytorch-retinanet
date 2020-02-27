@@ -90,9 +90,13 @@ def main(args=None):
     use_gpu = True
 
     if use_gpu:
-        retinanet = retinanet.cuda()
+        if torch.cuda.is_available():
+            retinanet = retinanet.cuda()
 
-    retinanet = torch.nn.DataParallel(retinanet).cuda()
+    if torch.cuda.is_available():
+        retinanet = torch.nn.DataParallel(retinanet).cuda()
+    else:
+        retinanet = torch.nn.DataParallel(retinanet)
 
     retinanet.training = True
 
@@ -118,8 +122,11 @@ def main(args=None):
             try:
                 optimizer.zero_grad()
 
-                classification_loss, regression_loss = retinanet([data['img'].cuda().float(), data['annot']])
-
+                if torch.cuda.is_available():
+                    classification_loss, regression_loss = retinanet([data['img'].cuda().float(), data['annot']])
+                else:
+                    classification_loss, regression_loss = retinanet([data['img'].float(), data['annot']])
+                    
                 classification_loss = classification_loss.mean()
                 regression_loss = regression_loss.mean()
 
