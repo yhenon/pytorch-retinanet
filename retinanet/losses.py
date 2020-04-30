@@ -61,7 +61,7 @@ class FocalLoss(nn.Module):
 
                     # cls_loss = focal_weight * torch.pow(bce, gamma)
                     cls_loss = focal_weight * bce
-                    classification_losses.append(cls_loss.sum(), min=1.0)
+                    classification_losses.append(cls_loss.sum())
                     regression_losses.append(torch.tensor(0).float())
                     
                 else:
@@ -76,7 +76,7 @@ class FocalLoss(nn.Module):
 
                     # cls_loss = focal_weight * torch.pow(bce, gamma)
                     cls_loss = focal_weight * bce
-                    classification_losses.append(cls_loss.sum(), min=1.0)
+                    classification_losses.append(cls_loss.sum())
                     regression_losses.append(torch.tensor(0).float())
                     
                 continue
