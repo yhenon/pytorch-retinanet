@@ -45,6 +45,8 @@ class FocalLoss(nn.Module):
 
             bbox_annotation = annotations[j, :, :]
             bbox_annotation = bbox_annotation[bbox_annotation[:, 4] != -1]
+            
+            classification = torch.clamp(classification, 1e-4, 1.0 - 1e-4)
 
             if bbox_annotation.shape[0] == 0:
                 if torch.cuda.is_available():
@@ -78,8 +80,6 @@ class FocalLoss(nn.Module):
                     regression_losses.append(torch.tensor(0).float())
                     
                 continue
-
-            classification = torch.clamp(classification, 1e-4, 1.0 - 1e-4)
 
             IoU = calc_iou(anchors[0, :, :], bbox_annotation[:, :4]) # num_anchors x num_annotations
 
