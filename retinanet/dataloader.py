@@ -142,7 +142,7 @@ class CSVDataset(Dataset):
             with self._open_for_csv(self.class_list) as file:
                 self.classes = self.load_classes(csv.reader(file, delimiter=','))
         except ValueError as e:
-            raise_from(ValueError('invalid CSV class file: {}: {}'.format(self.class_list, e)), None)
+            raise(ValueError('invalid CSV class file: {}: {}'.format(self.class_list, e)))
 
         self.labels = {}
         for key, value in self.classes.items():
@@ -153,7 +153,7 @@ class CSVDataset(Dataset):
             with self._open_for_csv(self.train_file) as file:
                 self.image_data = self._read_annotations(csv.reader(file, delimiter=','), self.classes)
         except ValueError as e:
-            raise_from(ValueError('invalid CSV annotations file: {}: {}'.format(self.train_file, e)), None)
+            raise(ValueError('invalid CSV annotations file: {}: {}'.format(self.train_file, e)))
         self.image_names = list(self.image_data.keys())
 
     def _parse(self, value, function, fmt):
@@ -179,7 +179,6 @@ class CSVDataset(Dataset):
         else:
             return open(path, 'r', newline='')
 
-
     def load_classes(self, csv_reader):
         result = {}
 
@@ -189,14 +188,13 @@ class CSVDataset(Dataset):
             try:
                 class_name, class_id = row
             except ValueError:
-                raise_from(ValueError('line {}: format should be \'class_name,class_id\''.format(line)), None)
+                raise(ValueError('line {}: format should be \'class_name,class_id\''.format(line)))
             class_id = self._parse(class_id, int, 'line {}: malformed class ID: {{}}'.format(line))
 
             if class_name in result:
                 raise ValueError('line {}: duplicate class name: \'{}\''.format(line, class_name))
             result[class_name] = class_id
         return result
-
 
     def __len__(self):
         return len(self.image_names)
