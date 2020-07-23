@@ -1,13 +1,7 @@
-from __future__ import print_function
-
-from pycocotools.coco import COCO
 from pycocotools.cocoeval import COCOeval
-
-import numpy as np
 import json
-import os
-
 import torch
+
 
 def evaluate_coco(dataset, model, threshold=0.05):
     
@@ -24,7 +18,10 @@ def evaluate_coco(dataset, model, threshold=0.05):
             scale = data['scale']
 
             # run network
-            scores, labels, boxes = model(data['img'].permute(2, 0, 1).cuda().float().unsqueeze(dim=0))
+            if torch.cuda.is_available():
+                scores, labels, boxes = model(data['img'].permute(2, 0, 1).cuda().float().unsqueeze(dim=0))
+            else:
+                scores, labels, boxes = model(data['img'].permute(2, 0, 1).float().unsqueeze(dim=0))
             scores = scores.cpu()
             labels = labels.cpu()
             boxes  = boxes.cpu()
