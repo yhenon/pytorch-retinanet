@@ -94,6 +94,14 @@ This will visualize bounding boxes on the validation set. To visualise with a CS
 python visualize.py --dataset csv --csv_classes <path/to/train/class_list.csv>  --csv_val <path/to/val_annots.csv> --model <path/to/model.pt>
 ```
 
+```
+python visualize_single_image.py --image_dir="images" --model_path="coco_resnet_50_map_0_335_state_dict.pt" --output_dir="testfol"
+```
+
+```
+python infer_video.py --video_path="sample.avi" --model_path="coco_resnet_50_map_0_335_state_dict.pt"
+```
+
 ## Model
 
 The retinanet model uses a resnet backbone. You can set the depth of the resnet model using the --depth argument. Depth must be one of 18, 34, 50, 101 or 152. Note that deeper models are more accurate but are slower and use more memory.
