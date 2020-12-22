@@ -215,15 +215,15 @@ def train(opt):
 
     # Create the model
     if opt.depth == 18:
-        retinanet = model.resnet18(num_classes=dataset_train.num_classes(), pretrained=True)
+        retinanet = model.resnet18(num_classes=len(params.obj_list), pretrained=True)
     elif opt.depth == 34:
-        retinanet = model.resnet34(num_classes=dataset_train.num_classes(), pretrained=True)
+        retinanet = model.resnet34(num_classes=len(params.obj_list), pretrained=True)
     elif opt.depth == 50:
-        retinanet = model.resnet50(num_classes=dataset_train.num_classes(), pretrained=True)
+        retinanet = model.resnet50(num_classes=len(params.obj_list), pretrained=True)
     elif opt.depth == 101:
-        retinanet = model.resnet101(num_classes=dataset_train.num_classes(), pretrained=True)
+        retinanet = model.resnet101(num_classes=len(params.obj_list), pretrained=True)
     elif opt.depth == 152:
-        retinanet = model.resnet152(num_classes=dataset_train.num_classes(), pretrained=True)
+        retinanet = model.resnet152(num_classes=len(params.obj_list), pretrained=True)
     else:
         raise ValueError('Unsupported model depth, must be one of 18, 34, 50, 101, 152')
 
