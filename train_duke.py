@@ -270,7 +270,7 @@ def train(opt):
                 optimizer.zero_grad()
 
                 if torch.cuda.is_available():
-                    classification_loss, regression_loss = retinanet([data['img'].cuda().float(), data['annot']])
+                    classification_loss, regression_loss = retinanet([data['img'].cuda().float(), data['annot'].cuda()])
                 else:
                     classification_loss, regression_loss = retinanet([data['img'].float(), data['annot']])
 
