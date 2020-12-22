@@ -12,8 +12,8 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from dbt_comp.data.duke import DukeDatasetV1, Resizer, collater, RepeatChannels, NumPyToTorch, Standardizer, SimpleAugmenter
-from retinanet import coco_eval
-from retinanet import csv_eval
+# from retinanet import coco_eval
+# from retinanet import csv_eval
 from retinanet import model
 # from retinanet.dataloader import CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, \
 #     Normalizer
@@ -306,17 +306,17 @@ def train(opt):
                 print(e)
                 continue
 
-        if opt.dataset == 'coco':
-
-            print('Evaluating dataset')
-
-            coco_eval.evaluate_coco(dataset_val, retinanet)
-
-        elif opt.dataset == 'csv' and opt.csv_val is not None:
-
-            print('Evaluating dataset')
-
-            mAP = csv_eval.evaluate(dataset_val, retinanet)
+        # if opt.dataset == 'coco':
+        #
+        #     print('Evaluating dataset')
+        #
+        #     coco_eval.evaluate_coco(dataset_val, retinanet)
+        #
+        # elif opt.dataset == 'csv' and opt.csv_val is not None:
+        #
+        #     print('Evaluating dataset')
+        #
+        #     mAP = csv_eval.evaluate(dataset_val, retinanet)
 
         scheduler.step(np.mean(epoch_loss))
 
