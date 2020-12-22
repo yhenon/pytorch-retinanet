@@ -1,0 +1,21 @@
+project_name: duke_data_v1_loader_v1
+data_path: '/gpfs/data/geraslab/jp4989/data/combined_duke_nyu_hdf5'
+train_set: '/gpfs/data/geraslab/jp4989/data/duke_dbt_metadata/2020.12.19.duke_nyu_combined_train_v1.pkl'
+val_set: '/gpfs/data/geraslab/jp4989/data/duke_dbt_metadata/2020.12.19.duke_nyu_combined_val_v1.pkl'
+test_set: '/gpfs/data/geraslab/jp4989/data/duke_dbt_metadata/2020.12.15.train_0_with_labels.pkl' # training set with center slices
+num_gpus: 1
+loader_version: 1
+
+# Use more reasonable anchor ratio based on Duke data
+anchors_scales: '[2 ** 0, 2 ** (1.0 / 3.0), 2 ** (2.0 / 3.0)]'
+anchors_ratios: '[(1.0, 1.0), (1.2, 0.9), (0.9, 1.2)]'
+
+obj_list: ['malignant_distortion', 'malignant_rest', 'benign_distortion', 'benign_rest']
+
+# whether or not to use all negative images in training
+filter_negatives_training: True
+
+# slice-sampling in training and validation
+train_slice_neighbor: 5
+val_slice_neighbor: 0
+test_slice_neighbor: 0
