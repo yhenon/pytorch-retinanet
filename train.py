@@ -2,6 +2,7 @@ import argparse
 import collections
 import json
 import os
+from collections import OrderedDict
 
 import numpy as np
 import torch
@@ -9,6 +10,7 @@ import torch.optim as optim
 from torch.utils.data import DataLoader
 from torchvision import transforms
 
+from pytorchtools import EarlyStopping
 from retinanet import csv_eval
 from retinanet import model
 from retinanet.dataloader import CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, \
@@ -95,11 +97,12 @@ def main(args=None):
 
     retinanet.train()
     retinanet.module.freeze_bn()
-
+    earlystopping = EarlyStopping(patience=10, verbose=True, delta=1e-10,
+                                  path=os.path.join(parser.savepath, 'best_model.pt'))
     print('Num training images: {}'.format(len(dataset_train)))
 
-    loss_dict = {}
-    val_loss_dict = {}
+    loss_dict = OrderedDict()
+    val_loss_dict = OrderedDict()
 
     for epoch_num in range(parser.epochs):
 
@@ -184,6 +187,12 @@ def main(args=None):
         torch.save(retinanet.module, model_save_path)
         print(f'Saved model of epoch {epoch_num} to {model_save_path}')
 
+        earlystopping(val_loss_dict.values(), retinanet)
+
+        if earlystopping.early_stop:
+            print("Early stopping")
+            break
+
     retinanet.eval()
 
     torch.save(retinanet, os.path.join(parser.savepath, 'model_final.pt'))
@@ -191,6 +200,7 @@ def main(args=None):
         json.dump(loss_dict, f)
     with open(os.path.join(parser.savepath, 'val_loss_history.json'), 'w') as f:
         json.dump(val_loss_dict, f)
+
 
 if __name__ == '__main__':
     main()
