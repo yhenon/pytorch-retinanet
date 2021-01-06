@@ -182,7 +182,9 @@ def main(args=None):
                 val_loss_dict[epoch_num] = np.mean(epoch_val_loss)
 
             mAP = csv_eval.evaluate(dataset_val, retinanet)
+            print ('-----------------')
             print(mAP)
+            print('-----------------')
         scheduler.step(np.mean(epoch_loss))
 
         model_save_path = os.path.join(parser.savepath, f'retinanet_{epoch_num}.pt')
