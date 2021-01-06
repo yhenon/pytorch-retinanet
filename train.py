@@ -192,5 +192,5 @@ def main(args=None):
     with open(os.path.join(args.savepath, 'val_loss_history.json'), 'w') as f:
         json.dump(val_loss_dict, f)
 
-    if __name__ == '__main__':
-        main()
+if __name__ == '__main__':
+    main()
