@@ -1,6 +1,5 @@
 import argparse
 import collections
-import json
 import os
 from collections import OrderedDict
 
@@ -172,7 +171,7 @@ def main(args=None):
 
                         val_loss = val_classification_loss + val_regression_loss
                         print('Validation Loss: {:1.5f}'.format(val_loss), end='\r', flush=True)
-                        epoch_val_loss.append(val_loss.cpu().numpy())
+                        epoch_val_loss.append(float(val_loss))
 
                 except Exception as e:
                     print(e)
@@ -182,7 +181,7 @@ def main(args=None):
                 val_loss_dict[epoch_num] = np.mean(epoch_val_loss)
 
             mAP = csv_eval.evaluate(dataset_val, retinanet)
-            print ('-----------------')
+            print('-----------------')
             print(mAP)
             print('-----------------')
         scheduler.step(np.mean(epoch_loss))
@@ -200,10 +199,13 @@ def main(args=None):
     retinanet.eval()
 
     torch.save(retinanet, os.path.join(parser.savepath, 'model_final.pt'))
-    with open(os.path.join(parser.savepath, 'loss_history.json'), 'w') as f:
-        json.dump(loss_dict, f)
-    with open(os.path.join(parser.savepath, 'val_loss_history.json'), 'w') as f:
-        json.dump(val_loss_dict, f)
+
+    with open(os.path.join(parser.savepath, 'loss_history.txt'), 'w') as f:
+        for epoch_num, loss in loss_dict.items():
+            f.write(f'{epoch_num}:{loss} \n')
+    with open(os.path.join(parser.savepath, 'val_loss_history.txt'), 'w') as f:
+        for epoch_num, loss in val_loss_dict.items():
+            f.write(f'{epoch_num}:{loss} \n')
 
 
 if __name__ == '__main__':
