@@ -167,6 +167,7 @@ def main(args=None):
                     val_regression_loss = val_classification_loss.mean()
 
                     val_loss = val_classification_loss + val_regression_loss
+                    print('Validation Loss: {:1.5f}'.format(val_loss), end='\r', flush=True)
                     epoch_val_loss.append(val_loss)
 
                 except Exception as e:
