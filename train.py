@@ -32,8 +32,8 @@ def main(args=None):
 
     parser = parser.parse_args(args)
 
-    if not os.path.exists(args.savepath):
-        os.makedirs(args.savepath, exist_ok=True)
+    if not os.path.exists(parser.savepath):
+        os.makedirs(parser.savepath, exist_ok=True)
 
     # Create the data loaders
     if parser.csv_train is None:
@@ -180,16 +180,16 @@ def main(args=None):
             print(mAP)
         scheduler.step(np.mean(epoch_loss))
 
-        model_save_path = os.path.join(args.savepath, f'retinanet_{epoch_num}.pt')
+        model_save_path = os.path.join(parser.savepath, f'retinanet_{epoch_num}.pt')
         torch.save(retinanet.module, model_save_path)
         print(f'Saved model of epoch {epoch_num} to {model_save_path}')
 
     retinanet.eval()
 
-    torch.save(retinanet, os.path.join(args.savepath, 'model_final.pt'))
-    with open(os.path.join(args.savepath, 'loss_history.json'), 'w') as f:
+    torch.save(retinanet, os.path.join(parser.savepath, 'model_final.pt'))
+    with open(os.path.join(parser.savepath, 'loss_history.json'), 'w') as f:
         json.dump(loss_dict, f)
-    with open(os.path.join(args.savepath, 'val_loss_history.json'), 'w') as f:
+    with open(os.path.join(parser.savepath, 'val_loss_history.json'), 'w') as f:
         json.dump(val_loss_dict, f)
 
 if __name__ == '__main__':
