@@ -177,7 +177,7 @@ def main(args=None):
                 except Exception as e:
                     print(e)
                     continue
-                print('')
+            print('')
             if (len(epoch_val_loss)):
                 val_loss_dict[epoch_num] = np.mean(epoch_val_loss)
 
