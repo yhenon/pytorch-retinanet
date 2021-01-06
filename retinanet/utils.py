@@ -1,6 +1,6 @@
+import numpy as np
 import torch
 import torch.nn as nn
-import numpy as np
 
 
 def conv3x3(in_planes, out_planes, stride=1):
@@ -79,6 +79,7 @@ class Bottleneck(nn.Module):
 
         return out
 
+
 class BBoxTransform(nn.Module):
 
     def __init__(self, mean=None, std=None):
@@ -101,10 +102,10 @@ class BBoxTransform(nn.Module):
 
     def forward(self, boxes, deltas):
 
-        widths  = boxes[:, :, 2] - boxes[:, :, 0]
+        widths = boxes[:, :, 2] - boxes[:, :, 0]
         heights = boxes[:, :, 3] - boxes[:, :, 1]
-        ctr_x   = boxes[:, :, 0] + 0.5 * widths
-        ctr_y   = boxes[:, :, 1] + 0.5 * heights
+        ctr_x = boxes[:, :, 0] + 0.5 * widths
+        ctr_y = boxes[:, :, 1] + 0.5 * heights
 
         dx = deltas[:, :, 0] * self.std[0] + self.mean[0]
         dy = deltas[:, :, 1] * self.std[1] + self.mean[1]
@@ -113,8 +114,8 @@ class BBoxTransform(nn.Module):
 
         pred_ctr_x = ctr_x + dx * widths
         pred_ctr_y = ctr_y + dy * heights
-        pred_w     = torch.exp(dw) * widths
-        pred_h     = torch.exp(dh) * heights
+        pred_w = torch.exp(dw) * widths
+        pred_h = torch.exp(dh) * heights
 
         pred_boxes_x1 = pred_ctr_x - 0.5 * pred_w
         pred_boxes_y1 = pred_ctr_y - 0.5 * pred_h
@@ -132,7 +133,6 @@ class ClipBoxes(nn.Module):
         super(ClipBoxes, self).__init__()
 
     def forward(self, boxes, img):
-
         batch_size, num_channels, height, width = img.shape
 
         boxes[:, :, 0] = torch.clamp(boxes[:, :, 0], min=0)
@@ -140,5 +140,5 @@ class ClipBoxes(nn.Module):
 
         boxes[:, :, 2] = torch.clamp(boxes[:, :, 2], max=width)
         boxes[:, :, 3] = torch.clamp(boxes[:, :, 3], max=height)
-      
+
         return boxes

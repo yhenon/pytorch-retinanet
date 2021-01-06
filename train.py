@@ -2,18 +2,16 @@ import argparse
 import collections
 
 import numpy as np
-
 import torch
 import torch.optim as optim
-from torchvision import transforms
-
-from retinanet import model
-from retinanet.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, \
-    Normalizer
 from torch.utils.data import DataLoader
+from torchvision import transforms
 
 from retinanet import coco_eval
 from retinanet import csv_eval
+from retinanet import model
+from retinanet.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, Augmenter, \
+    Normalizer
 
 assert torch.__version__.split('.')[0] == '1'
 
@@ -126,7 +124,7 @@ def main(args=None):
                     classification_loss, regression_loss = retinanet([data['img'].cuda().float(), data['annot']])
                 else:
                     classification_loss, regression_loss = retinanet([data['img'].float(), data['annot']])
-                    
+
                 classification_loss = classification_loss.mean()
                 regression_loss = regression_loss.mean()
 

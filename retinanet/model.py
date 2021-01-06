@@ -1,11 +1,13 @@
-import torch.nn as nn
-import torch
 import math
+
+import torch
+import torch.nn as nn
 import torch.utils.model_zoo as model_zoo
 from torchvision.ops import nms
-from retinanet.utils import BasicBlock, Bottleneck, BBoxTransform, ClipBoxes
-from retinanet.anchors import Anchors
+
 from retinanet import losses
+from retinanet.anchors import Anchors
+from retinanet.utils import BasicBlock, Bottleneck, BBoxTransform, ClipBoxes
 
 model_urls = {
     'resnet18': 'https://download.pytorch.org/models/resnet18-5c106cde.pth',
@@ -295,7 +297,6 @@ class ResNet(nn.Module):
                 finalAnchorBoxesCoordinates = torch.cat((finalAnchorBoxesCoordinates, anchorBoxes[anchors_nms_idx]))
 
             return [finalScores, finalAnchorBoxesIndexes, finalAnchorBoxesCoordinates]
-
 
 
 def resnet18(num_classes, pretrained=False, **kwargs):

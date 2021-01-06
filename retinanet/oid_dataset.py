@@ -225,7 +225,7 @@ class OidDataset(Dataset):
         try:
             return img.astype(np.float32) / 255.0
         except Exception:
-            print (path)
+            print(path)
             exit(0)
 
     def load_annotations(self, image_index):

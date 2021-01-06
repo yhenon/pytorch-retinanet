@@ -1,10 +1,11 @@
-import torch
-import numpy as np
-import time
-import os
-import csv
-import cv2
 import argparse
+import csv
+import os
+import time
+
+import cv2
+import numpy as np
+import torch
 
 
 def load_classes(csv_reader):
@@ -16,7 +17,7 @@ def load_classes(csv_reader):
         try:
             class_name, class_id = row
         except ValueError:
-            raise(ValueError('line {}: format should be \'class_name,class_id\''.format(line)))
+            raise (ValueError('line {}: format should be \'class_name,class_id\''.format(line)))
         class_id = int(class_id)
 
         if class_name in result:
@@ -33,7 +34,6 @@ def draw_caption(image, box, caption):
 
 
 def detect_image(image_path, model_path, class_list):
-
     with open(class_list, 'r') as f:
         classes = load_classes(csv.reader(f, delimiter=','))
 
@@ -120,7 +120,6 @@ def detect_image(image_path, model_path, class_list):
 
 
 if __name__ == '__main__':
-
     parser = argparse.ArgumentParser(description='Simple script for visualizing result of training.')
 
     parser.add_argument('--image_dir', help='Path to directory containing images')
