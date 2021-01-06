@@ -159,19 +159,20 @@ def main(args=None):
             print('Evaluating dataset')
             for iter_num, data in enumerate(dataloader_val):
                 try:
-                    optimizer.zero_grad()
-                    if torch.cuda.is_available():
-                        val_classification_loss, val_regression_loss = retinanet(
-                            [data['img'].cuda().float(), data['annot']])
-                    else:
-                        val_classification_loss, val_regression_loss = retinanet([data['img'].float(), data['annot']])
+                    with torch.no_grad():
+                        if torch.cuda.is_available():
+                            val_classification_loss, val_regression_loss = retinanet(
+                                [data['img'].cuda().float(), data['annot']])
+                        else:
+                            val_classification_loss, val_regression_loss = retinanet(
+                                [data['img'].float(), data['annot']])
 
-                    val_classification_loss = val_classification_loss.mean()
-                    val_regression_loss = val_classification_loss.mean()
+                        val_classification_loss = val_classification_loss.mean()
+                        val_regression_loss = val_classification_loss.mean()
 
-                    val_loss = val_classification_loss + val_regression_loss
-                    print('Validation Loss: {:1.5f}'.format(val_loss), end='\r', flush=True)
-                    epoch_val_loss.append(val_loss.cpu().numpy())
+                        val_loss = val_classification_loss + val_regression_loss
+                        print('Validation Loss: {:1.5f}'.format(val_loss), end='\r', flush=True)
+                        epoch_val_loss.append(val_loss.cpu().numpy())
 
                 except Exception as e:
                     print(e)
