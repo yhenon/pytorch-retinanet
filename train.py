@@ -188,7 +188,7 @@ def main(args=None):
         torch.save(retinanet.module, model_save_path)
         print(f'Saved model of epoch {epoch_num} to {model_save_path}')
 
-        earlystopping(val_loss_dict.values(), retinanet)
+        earlystopping(list(val_loss_dict.values()), retinanet)
 
         if earlystopping.early_stop:
             print("Early stopping")
