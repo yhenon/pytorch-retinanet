@@ -171,11 +171,12 @@ def main(args=None):
 
                     val_loss = val_classification_loss + val_regression_loss
                     print('Validation Loss: {:1.5f}'.format(val_loss), end='\r', flush=True)
-                    epoch_val_loss.append(val_loss)
+                    epoch_val_loss.append(val_loss.numpy())
 
                 except Exception as e:
                     print(e)
                     continue
+                print('')
             if (len(epoch_val_loss)):
                 val_loss_dict[epoch_num] = np.mean(epoch_val_loss)
 
