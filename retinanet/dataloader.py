@@ -162,7 +162,7 @@ class CSVDataset(Dataset):
         try:
             return function(value)
         except ValueError as e:
-            raise_from(ValueError(fmt.format(e)), None)
+            raise (ValueError(fmt.format(e)), None)
 
     def _open_for_csv(self, path):
         """
@@ -253,7 +253,7 @@ class CSVDataset(Dataset):
             try:
                 img_file, x1, y1, x2, y2, class_name = row[:6]
             except ValueError:
-                raise_from(ValueError(
+                raise (ValueError(
                     'line {}: format should be \'img_file,x1,y1,x2,y2,class_name\' or \'img_file,,,,,\''.format(line)),
                            None)
 
