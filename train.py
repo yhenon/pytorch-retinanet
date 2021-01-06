@@ -164,7 +164,7 @@ def main(args=None):
             print('Evaluating dataset')
 
             mAP = csv_eval.evaluate(dataset_val, retinanet)
-
+            print(mAP)
         scheduler.step(np.mean(epoch_loss))
 
         torch.save(retinanet.module, '{}_retinanet_{}.pt'.format(parser.dataset, epoch_num))
