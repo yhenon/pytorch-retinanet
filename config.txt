@@ -7,5 +7,5 @@ minside = 608
 savepath = datetime
 
 [MODEL]
-ratios = [0.47, 1.0, 2.129]
-scales = [0.4, 0.503, 0.651]
+ratios = [0.468, 1.0, 2.138]
+scales = [0.4, 0.555, 1.331]
