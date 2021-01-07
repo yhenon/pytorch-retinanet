@@ -3,6 +3,7 @@ import collections
 import configparser
 import json
 import os
+import shutil
 import sys
 from collections import OrderedDict
 from datetime import datetime
@@ -62,6 +63,8 @@ def main(args=None):
     if not os.path.exists(model_save_dir):
         os.makedirs(model_save_dir, exist_ok=True)
 
+    # Copy the config file into the model save directory
+    shutil.copy(parser.configfile, os.path.join(model_save_dir, 'config.txt'))
     # Create the data loaders
     if parser.csv_train is None:
         raise ValueError('Must provide --csv_train,')
