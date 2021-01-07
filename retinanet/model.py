@@ -156,7 +156,7 @@ class ClassificationModel(nn.Module):
 
 class ResNet(nn.Module):
 
-    def __init__(self, num_classes, block, layers):
+    def __init__(self, num_classes, block, layers, ratios=None, scales=None):
         self.inplanes = 64
         super(ResNet, self).__init__()
         self.conv1 = nn.Conv2d(3, 64, kernel_size=7, stride=2, padding=3, bias=False)
@@ -182,7 +182,7 @@ class ResNet(nn.Module):
         self.regressionModel = RegressionModel(256)
         self.classificationModel = ClassificationModel(256, num_classes=num_classes)
 
-        self.anchors = Anchors()
+        self.anchors = Anchors(ratios=ratios, scales=scales)
 
         self.regressBoxes = BBoxTransform()
 

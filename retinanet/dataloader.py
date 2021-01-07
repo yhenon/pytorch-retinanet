@@ -255,7 +255,7 @@ class CSVDataset(Dataset):
             except ValueError:
                 raise (ValueError(
                     'line {}: format should be \'img_file,x1,y1,x2,y2,class_name\' or \'img_file,,,,,\''.format(line)),
-                           None)
+                       None)
 
             if img_file not in result:
                 result[img_file] = []
@@ -336,7 +336,11 @@ def collater(data):
 class Resizer(object):
     """Convert ndarrays in sample to Tensors."""
 
-    def __call__(self, sample, min_side=608, max_side=1024):
+    def __init__(self, min_side=608, max_side=1024):
+        self.min_side = min_side
+        self.max_side = max_side
+
+    def __call__(self, sample):
         image, annots = sample['img'], sample['annot']
 
         rows, cols, cns = image.shape
@@ -344,14 +348,14 @@ class Resizer(object):
         smallest_side = min(rows, cols)
 
         # rescale the image so the smallest side is min_side
-        scale = min_side / smallest_side
+        scale = self.min_side / smallest_side
 
         # check if the largest side is now greater than max_side, which can happen
         # when images have a large aspect ratio
         largest_side = max(rows, cols)
 
-        if largest_side * scale > max_side:
-            scale = max_side / largest_side
+        if largest_side * scale > self.max_side:
+            scale = self.max_side / largest_side
 
         # resize the image with the computed scale
         image = skimage.transform.resize(image, (int(round(rows * scale)), int(round((cols * scale)))))

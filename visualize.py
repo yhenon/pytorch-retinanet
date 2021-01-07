@@ -8,7 +8,7 @@ from torch.utils.data import DataLoader
 from torchvision import transforms
 
 from retinanet.dataloader import CocoDataset, CSVDataset, collater, Resizer, AspectRatioBasedSampler, UnNormalizer, \
-	Normalizer
+    Normalizer
 
 assert torch.__version__.split('.')[0] == '1'
 
