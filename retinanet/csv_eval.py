@@ -239,17 +239,19 @@ def evaluate(
         print('{}: {}'.format(label_name, average_precisions[label][0]))
         print("Precision: ",precision[-1])
         print("Recall: ",recall[-1])
-        plt.plot(recall,precision)
-        # naming the x axis 
-        plt.xlabel('Recall') 
-        # naming the y axis 
-        plt.ylabel('Precision') 
         
-        # giving a title to my graph 
-        plt.title('Precision Recall curve') 
-        
-        # function to show the plot
-        plt.savefig(save_path+'/'+label_name+'_precision_recall.jpg')
+        if save_path!=None:
+            plt.plot(recall,precision)
+            # naming the x axis 
+            plt.xlabel('Recall') 
+            # naming the y axis 
+            plt.ylabel('Precision') 
+
+            # giving a title to my graph 
+            plt.title('Precision Recall curve') 
+
+            # function to show the plot
+            plt.savefig(save_path+'/'+label_name+'_precision_recall.jpg')
 
 
 
