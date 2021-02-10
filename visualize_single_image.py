@@ -52,6 +52,8 @@ def detect_image(image_path, model_path, class_list):
     for img_name in os.listdir(image_path):
 
         image = cv2.imread(os.path.join(image_path, img_name))
+        image = cv2.cvtColor(image, cv2.COLOR_BGR2RGB)
+
         if image is None:
             continue
         image_orig = image.copy()
@@ -109,7 +111,7 @@ def detect_image(image_path, model_path, class_list):
                 y2 = int(bbox[3] / scale)
                 label_name = labels[int(classification[idxs[0][j]])]
                 print(bbox, classification.shape)
-                score = scores[j]
+                score = scores[idxs[0][j]]
                 caption = '{} {:.3f}'.format(label_name, score)
                 # draw_caption(img, (x1, y1, x2, y2), label_name)
                 draw_caption(image_orig, (x1, y1, x2, y2), caption)
