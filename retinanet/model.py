@@ -259,8 +259,6 @@ class ResNet(nn.Module):
             transformed_anchors = self.regressBoxes(anchors, regression)
             transformed_anchors = self.clipBoxes(transformed_anchors, img_batch)
 
-            finalResult = [[], [], []]
-
             finalScores = torch.Tensor([])
             finalAnchorBoxesIndexes = torch.Tensor([]).long()
             finalAnchorBoxesCoordinates = torch.Tensor([])
@@ -281,10 +279,6 @@ class ResNet(nn.Module):
                 anchorBoxes = torch.squeeze(transformed_anchors)
                 anchorBoxes = anchorBoxes[scores_over_thresh]
                 anchors_nms_idx = nms(anchorBoxes, scores, 0.5)
-
-                finalResult[0].extend(scores[anchors_nms_idx])
-                finalResult[1].extend(torch.tensor([i] * anchors_nms_idx.shape[0]))
-                finalResult[2].extend(anchorBoxes[anchors_nms_idx])
 
                 finalScores = torch.cat((finalScores, scores[anchors_nms_idx]))
                 finalAnchorBoxesIndexesValue = torch.tensor([i] * anchors_nms_idx.shape[0])
