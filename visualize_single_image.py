@@ -98,7 +98,7 @@ def detect_image(image_path, model_path, class_list):
 
             st = time.time()
             print(image.shape, image_orig.shape, scale)
-            scores, classification, transformed_anchors = model(image.cuda().float())
+            scores, classification, transformed_anchors = model(image.float())
             print('Elapsed time: {}'.format(time.time() - st))
             idxs = np.where(scores.cpu() > 0.5)
 
