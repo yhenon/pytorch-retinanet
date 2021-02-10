@@ -3,7 +3,7 @@ from __future__ import print_function
 import numpy as np
 import json
 import os
-
+import matplotlib.pyplot as plt
 import torch
 
 
@@ -164,7 +164,7 @@ def evaluate(
         iou_threshold   : The threshold used to consider when a detection is positive or negative.
         score_threshold : The score confidence threshold to use for detections.
         max_detections  : The maximum number of detections to use per image.
-        save_path       : The path to save images with visualized detections to.
+        save_path       : The path to save precision recall curve of each label.
     # Returns
         A dict mapping class names to mAP scores.
     """
@@ -231,11 +231,29 @@ def evaluate(
         # compute average precision
         average_precision  = _compute_ap(recall, precision)
         average_precisions[label] = average_precision, num_annotations
-    
+
+
     print('\nmAP:')
     for label in range(generator.num_classes()):
         label_name = generator.label_to_name(label)
         print('{}: {}'.format(label_name, average_precisions[label][0]))
-    
+        print("Precision: ",precision[-1])
+        print("Recall: ",recall[-1])
+        
+        if save_path!=None:
+            plt.plot(recall,precision)
+            # naming the x axis 
+            plt.xlabel('Recall') 
+            # naming the y axis 
+            plt.ylabel('Precision') 
+
+            # giving a title to my graph 
+            plt.title('Precision Recall curve') 
+
+            # function to show the plot
+            plt.savefig(save_path+'/'+label_name+'_precision_recall.jpg')
+
+
+
     return average_precisions
 
