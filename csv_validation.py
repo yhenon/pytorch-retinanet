@@ -22,7 +22,10 @@ def main(args=None):
     parser = parser.parse_args(args)
 
     #dataset_val = CocoDataset(parser.coco_path, set_name='val2017',transform=transforms.Compose([Normalizer(), Resizer()]))
-    dataset_val = CSVDataset(parser.csv_annotations_path,parser.class_list_path,transform=transforms.Compose([Normalizer(), Resizer()]))
+    dataset_val = CSVDataset(parser.csv_annotations_path,parser.class_list_path,
+                             transform=transforms.Compose([Normalizer(), Resizer()]),
+                             root_dir=parser.images_path
+                             )
     # Create the model
     #retinanet = model.resnet50(num_classes=dataset_val.num_classes(), pretrained=True)
     retinanet=torch.load(parser.model_path)

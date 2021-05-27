@@ -25,6 +25,7 @@ def main(args=None):
 
     parser.add_argument('--dataset', help='Dataset type, must be one of csv or coco.')
     parser.add_argument('--coco_path', help='Path to COCO directory')
+    parser.add_argument('--images_path', help='Path to which CSV image paths are relative')
     parser.add_argument('--csv_train', help='Path to file containing training annotations (see readme)')
     parser.add_argument('--csv_classes', help='Path to file containing class list (see readme)')
     parser.add_argument('--csv_val', help='Path to file containing validation annotations (optional, see readme)')
@@ -48,13 +49,14 @@ def main(args=None):
     elif parser.dataset == 'csv':
 
         if parser.csv_train is None:
-            raise ValueError('Must provide --csv_train when training on COCO,')
+            raise ValueError('Must provide --csv_train when training on CSV,')
 
         if parser.csv_classes is None:
-            raise ValueError('Must provide --csv_classes when training on COCO,')
+            raise ValueError('Must provide --csv_classes when training on CSV,')
 
         dataset_train = CSVDataset(train_file=parser.csv_train, class_list=parser.csv_classes,
-                                   transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]))
+                                   transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]),
+                                   root_dir=parser.images_path)
 
         if parser.csv_val is None:
             dataset_val = None
