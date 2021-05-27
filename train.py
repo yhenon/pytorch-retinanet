@@ -56,7 +56,7 @@ def main(args=None):
 
         dataset_train = CSVDataset(train_file=parser.csv_train, class_list=parser.csv_classes,
                                    transform=transforms.Compose([Normalizer(), Augmenter(), Resizer()]),
-                                   root_dir=parser.images_path)
+                                   root_dir=parser.csv_images_path)
 
         if parser.csv_val is None:
             dataset_val = None
