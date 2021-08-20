@@ -64,6 +64,7 @@ Run `coco_validation.py` to validate the code on the COCO dataset. With the abov
 
 `python coco_validation.py --coco_path ~/path/to/coco --model_path /path/to/model/coco_resnet_50_map_0_335_state_dict.pt`
 
+
 This produces the following results:
 
 ```
@@ -80,6 +81,26 @@ This produces the following results:
  Average Recall     (AR) @[ IoU=0.50:0.95 | area=medium | maxDets=100 ] = 0.508
  Average Recall     (AR) @[ IoU=0.50:0.95 | area= large | maxDets=100 ] = 0.597
 ```
+
+For CSV Datasets (more info on those below), run the following script to validate:
+
+`python csv_validation.py --csv_annotations_path path/to/annotations.csv --model_path path/to/model.pt --images_path path/to/images_dir --class_list_path path/to/class_list.csv   (optional) iou_threshold iou_thres (0<iou_thresh<1) `
+
+It produces following resullts:
+
+```
+label_1 : (label_1_mAP)
+Precision :  ...
+Recall:  ...
+
+label_2 : (label_2_mAP)
+Precision :  ...
+Recall:  ...
+```
+
+You can also configure csv_eval.py script to save the precision-recall curve on disk.
+
+
 
 ## Visualization
 
