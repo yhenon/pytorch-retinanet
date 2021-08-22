@@ -126,13 +126,15 @@ class CocoDataset(Dataset):
 class CSVDataset(Dataset):
     """CSV dataset."""
 
-    def __init__(self, train_file, class_list, transform=None):
+    def __init__(self, train_file, class_list, transform=None, root_dir=None):
         """
         Args:
             train_file (string): CSV file with training annotations
             annotations (string): CSV file with class list
             test_file (string, optional): CSV file with testing annotations
+            root_dir (string, optional): Path to which CSV image paths are relative
         """
+        self.root_dir = root_dir
         self.train_file = train_file
         self.class_list = class_list
         self.transform = transform
@@ -256,6 +258,9 @@ class CSVDataset(Dataset):
 
             try:
                 img_file, x1, y1, x2, y2, class_name = row[:6]
+                if self.root_dir:
+                    img_file = os.path.join(self.root_dir, img_file)
+                    
             except ValueError:
                 raise_from(ValueError('line {}: format should be \'img_file,x1,y1,x2,y2,class_name\' or \'img_file,,,,,\''.format(line)), None)
 
