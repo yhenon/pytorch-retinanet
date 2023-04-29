@@ -84,7 +84,7 @@ This produces the following results:
 
 For CSV Datasets (more info on those below), run the following script to validate:
 
-`python csv_validation.py --csv_annotations_path path/to/annotations.csv --model_path path/to/model.pt --images_path path/to/images_dir --class_list_path path/to/class_list.csv   (optional) iou_threshold iou_thres (0<iou_thresh<1) `
+`python csv_validation.py --csv_annotations_path path/to/annotations.csv --model_path path/to/model.pt --images_path path/to/images_dir --class_list_path path/to/class_list.csv (optional) --iou_threshold iou_thres (0<iou_thresh<1) `
 
 It produces following resullts:
 
